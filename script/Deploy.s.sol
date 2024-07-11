@@ -22,9 +22,18 @@ import {TokenUriBuilder} from "src/tokens/TokenUriBuilder.sol";
 contract Deploy is Script {
     // Events.
     event Tasks(
-        address[] _taskCreators, uint256[] _taskDeadlines, string[] _taskTitles, string[] taskDetail, uint256[] itemIds
+        address[] _taskCreators,
+        uint256[] _taskDeadlines,
+        string[] _taskTitles,
+        string[] taskDetail,
+        uint256[] itemIds
     );
-    event TaskArray(address[] _taskCreators, uint256[] _taskDeadlines, string[] _taskTitles, string[] taskDetail);
+    event TaskArray(
+        address[] _taskCreators,
+        uint256[] _taskDeadlines,
+        string[] _taskTitles,
+        string[] taskDetail
+    );
 
     // Errors.
     error Invalid();
@@ -35,13 +44,13 @@ contract Deploy is Script {
     bytes constant BYTES = bytes(string("BYTES"));
 
     // Contracts.
-    address bulletinAddr = payable(address(0xd7A65C912c3e29F4f4A5faD44E901111a8FAe922));
-    address loggerAddr = address(0x116f3f5bF4dC657D185D68B0000262254478575E);
+    address bulletinAddr = payable(address(0));
+    address loggerAddr = address(0);
     address factoryAddr = address(0);
     address payable marketAddr = payable(address(0));
 
     // Tokens.
-    address tokenMinterAddr = address(0xA018CCC6ED7812F15401D58D42ec7365a4Be1FD4);
+    address tokenMinterAddr = address(0);
     address currencyAddr;
     address currencyAddr2;
     address tokenBuilderAddr;
@@ -51,10 +60,16 @@ contract Deploy is Script {
     address user1 = address(0x4744cda32bE7b3e75b9334001da9ED21789d4c0d);
     address user2 = address(0xFB12B6A543d986A1938d2b3C7d05848D8913AcC4);
     address user3 = address(0x85E70769d04Be1C9d7C3c373b98BD9929f61F428);
-    address gasbuddy = address(0x7Cf60ec5A5541b7d4073F795a67A75E383F3FFFf);
+    address gasbot = address(0x7Cf60ec5A5541b7d4073F795a67A75E383F3FFFf);
 
-    // Roles.
-    uint256 AUTHORIZED_TOKENS = 10;
+    // Logger Roles.
+    uint256 MEMBERS = 1 << 1;
+    uint256 REVIEWERS = 1 << 2;
+    uint256 GASBOT = 1 << 3;
+    uint256 AUTHORIZED_TOKENS = 1 << 4;
+    uint256 CROISSANT = 1 << 5;
+    uint256 COFFEE = 1 << 6;
+    uint256 HELPERS = 1 << 7;
 
     // Curves.
     Curve curve1;
@@ -78,47 +93,52 @@ contract Deploy is Script {
 
         vm.startBroadcast(privateKey);
 
-        // ILog(loggerAddr).grantRoles(
-        //     address(uint160(uint256(keccak256(abi.encode(tokenMinterAddr, 1))))), AUTHORIZED_TOKENS
-        // );
-        // ILog(loggerAddr).logByToken(
-        //     ILog(loggerAddr).MEMBERS(),
-        //     tokenMinterAddr,
-        //     1,
-        //     AUTHORIZED_TOKENS,
-        //     0,
-        //     "Flavorful!",
-        //     abi.encode(uint256(3), uint256(7), uint256(9))
-        // );
-        // deployCommons(account, user1, gasbuddy);
+        deployCommons(account, user1, gasbot);
         // deployTokenBuilder();
 
         vm.stopBroadcast();
     }
 
     function runSupport(address patron) internal {
-        marketAddr = payable(address(0xc0Cb59917D6632bDaa04a9223Ff3FD700fD367E0));
-        Currency(0x53680ac74673922705a009D5fCd6469A9E67fa88).mint(patron, 1 ether, marketAddr);
+        marketAddr = payable(
+            address(0xc0Cb59917D6632bDaa04a9223Ff3FD700fD367E0)
+        );
+        Currency(0x53680ac74673922705a009D5fCd6469A9E67fa88).mint(
+            patron,
+            1 ether,
+            marketAddr
+        );
 
         uint256 price;
         TokenCurve(marketAddr).support(1, patron, 0.001 ether);
 
         price = TokenCurve(marketAddr).getCurvePrice(true, 2, 0);
-        TokenCurve(marketAddr).support{value: price - 0.003 ether}(2, patron, 0.003 ether);
+        TokenCurve(marketAddr).support{value: price - 0.003 ether}(
+            2,
+            patron,
+            0.003 ether
+        );
 
         price = TokenCurve(marketAddr).getCurvePrice(true, 3, 0);
-        TokenCurve(marketAddr).support{value: price - 0.0001 ether}(3, patron, 0.0001 ether);
+        TokenCurve(marketAddr).support{value: price - 0.0001 ether}(
+            3,
+            patron,
+            0.0001 ether
+        );
     }
 
-    function deployCommons(address patron, address user, address _gasbuddy) internal {
-        // Deploy quest contract and set gasbuddy.
+    function deployCommons(address patron, address user) internal {
+        // Deploy quest contract and set gasbot.
         deployLogger(false, patron);
-        ILog(loggerAddr).grantRoles(gasbuddy, ILog(loggerAddr).GASBUDDIES());
-        ILog(loggerAddr).grantRoles(patron, ILog(loggerAddr).MEMBERS());
+        ILog(loggerAddr).grantRoles(gasbot, GASBOT);
+        ILog(loggerAddr).grantRoles(patron, MEMBERS);
 
         // Deploy bulletin contract and grant roles.
         deployBulletin(false, patron);
-        IBulletin(bulletinAddr).grantRoles(loggerAddr, IBulletin(bulletinAddr).LOGGERS());
+        IBulletin(bulletinAddr).grantRoles(
+            loggerAddr,
+            IBulletin(bulletinAddr).LOGGERS()
+        );
 
         // Prepare lists.
         registerCoffee();
@@ -146,7 +166,12 @@ contract Deploy is Script {
                 name: "Coffee with $croissant",
                 desc: "For the $croissant community, we offer our coffee for 5 $croissant."
             }),
-            TokenSource({user: address(0), bulletin: bulletinAddr, listId: 1, logger: loggerAddr}),
+            TokenSource({
+                user: address(0),
+                bulletin: bulletinAddr,
+                listId: 1,
+                logger: loggerAddr
+            }),
             TokenBuilder({builder: tokenBuilderAddr, builderId: 1}),
             TokenMarket({market: marketAddr, limit: 100})
         );
@@ -157,7 +182,12 @@ contract Deploy is Script {
                 name: "Coffee",
                 desc: "Giving back to the $coffee community, we take 3 $coffee for our labor and time ,and the rest in $stablecoins for our continued commitment in sourcing local beans and practicing sustainable waste practices."
             }),
-            TokenSource({user: address(0), bulletin: bulletinAddr, listId: 1, logger: loggerAddr}),
+            TokenSource({
+                user: address(0),
+                bulletin: bulletinAddr,
+                listId: 1,
+                logger: loggerAddr
+            }),
             TokenBuilder({builder: tokenBuilderAddr, builderId: 2}),
             TokenMarket({market: marketAddr, limit: 300})
         );
@@ -168,7 +198,12 @@ contract Deploy is Script {
                 name: "[Service] Deliver a Pitcher of Coffee", // Pay for delivery in $COFFEE via drop and receive service payments in $COFFEE via curve
                 desc: "We can deliver a pitch of cold brew locally for 10 $coffee to cover labor, and the rest in $stablecoin for our commitment to recycle pitchers and deliver with zero-emission."
             }),
-            TokenSource({user: address(0), bulletin: bulletinAddr, listId: 2, logger: loggerAddr}),
+            TokenSource({
+                user: address(0),
+                bulletin: bulletinAddr,
+                listId: 2,
+                logger: loggerAddr
+            }),
             TokenBuilder({builder: tokenBuilderAddr, builderId: 3}),
             TokenMarket({market: marketAddr, limit: 20})
         );
@@ -179,7 +214,12 @@ contract Deploy is Script {
                 name: "[Help Wanted] Deliver a Pitcher of Coffee",
                 desc: "Reserve a spot with 0.5 $coffee to help us deliver with zero-emission. Hop into our Discord for more delivery detail~"
             }),
-            TokenSource({user: user1, bulletin: bulletinAddr, listId: 2, logger: loggerAddr}),
+            TokenSource({
+                user: user1,
+                bulletin: bulletinAddr,
+                listId: 2,
+                logger: loggerAddr
+            }),
             TokenBuilder({builder: tokenBuilderAddr, builderId: 4}),
             TokenMarket({market: marketAddr, limit: 10})
         );
@@ -269,27 +309,75 @@ contract Deploy is Script {
         // Need this only if deployer account is different from account operating the contract
         Bulletin(payable(bulletinAddr)).transferOwnership(user);
 
+        // Grant patron CROISSANT and COFFEE role.
+        ILog(loggerAddr).grantRoles(patron, COFFEE);
+        ILog(loggerAddr).grantRoles(patron, CROISSANT);
+        ILog(loggerAddr).grantRoles(patron, HELPERS);
+
         // Submit mock user input.
         ILog(loggerAddr).log(
-            ILog(loggerAddr).MEMBERS(), bulletinAddr, 1, 0, "Flavorful!", abi.encode(uint256(3), uint256(7), uint256(9))
+            MEMBERS,
+            bulletinAddr,
+            1,
+            0,
+            "So smooth!",
+            abi.encode(uint256(3), uint256(7), uint256(9))
         );
-        ILog(loggerAddr).log(ILog(loggerAddr).MEMBERS(), bulletinAddr, 2, 0, "Wonderful service!", BYTES);
+        ILog(loggerAddr).log(
+            MEMBERS,
+            bulletinAddr,
+            2,
+            0,
+            "Wonderful service!",
+            BYTES
+        );
 
         // Full stablecoin support.
         uint256 price = TokenCurve(marketAddr).getCurvePrice(true, 1, 0);
         TokenCurve(marketAddr).support(1, patron, price);
 
-      // Floor currency support.
+        // Floor currency support.
         price = TokenCurve(marketAddr).getCurvePrice(true, 2, 0);
-        TokenCurve(marketAddr).support{value: price - 3 ether}(2, patron, 3 ether);
+        TokenCurve(marketAddr).support{value: price - 3 ether}(
+            2,
+            patron,
+            3 ether
+        );
 
         // Partial-floor stablecoin support.
         price = TokenCurve(marketAddr).getCurvePrice(true, 3, 0);
-        TokenCurve(marketAddr).support{value: price - 9.9995 ether}(3, patron, 9.9995 ether);
+        TokenCurve(marketAddr).support{value: price - 9.9995 ether}(
+            3,
+            patron,
+            9.9995 ether
+        );
 
         // Floor currency support.
         price = TokenCurve(marketAddr).getCurvePrice(true, 4, 0);
-        TokenCurve(marketAddr).support{value: price - 0.5 ether}(4, patron, 0.5 ether);
+        TokenCurve(marketAddr).support{value: price - 0.5 ether}(
+            4,
+            patron,
+            0.5 ether
+        );
+
+        // Grant AUTHORIZED_TOKENS role.
+        ILog(loggerAddr).grantRoles(
+            address(
+                uint160(uint256(keccak256(abi.encode(tokenMinterAddr, 1))))
+            ),
+            AUTHORIZED_TOKENS
+        );
+
+        // Patron log
+        ILog(loggerAddr).logByToken(
+            MEMBERS,
+            tokenMinterAddr,
+            1,
+            AUTHORIZED_TOKENS,
+            0,
+            "Flavorful!",
+            abi.encode(uint256(3), uint256(7), uint256(9))
+        );
     }
 
     function deployBulletin(bool factory, address user) internal {
@@ -329,19 +417,35 @@ contract Deploy is Script {
         tokenBuilderAddr = address(new TokenUriBuilder());
     }
 
-    function deployCurrency(string memory name, string memory symbol, address owner) internal {
+    function deployCurrency(
+        string memory name,
+        string memory symbol,
+        address owner
+    ) internal {
         delete currencyAddr;
         currencyAddr = address(new Currency(name, symbol, owner));
     }
 
-    function deployCurrency2(string memory name, string memory symbol, address owner) internal {
+    function deployCurrency2(
+        string memory name,
+        string memory symbol,
+        address owner
+    ) internal {
         delete currencyAddr2;
         currencyAddr2 = address(new Currency(name, symbol, owner));
     }
 
-    function support(uint256 curveId, address patron, uint256 amountInCurrency) internal {
+    function support(
+        uint256 curveId,
+        address patron,
+        uint256 amountInCurrency
+    ) internal {
         uint256 price = TokenCurve(marketAddr).getCurvePrice(true, curveId, 0);
-        TokenCurve(marketAddr).support{value: price}(curveId, patron, amountInCurrency);
+        TokenCurve(marketAddr).support{value: price}(
+            curveId,
+            patron,
+            amountInCurrency
+        );
     }
 
     function registerList(
@@ -361,8 +465,14 @@ contract Deploy is Script {
             itemIds.push(itemId + i);
         }
 
-        List memory list =
-            List({owner: user, title: listTitle, detail: listDetail, schema: BYTES, itemIds: itemIds, drip: drip});
+        List memory list = List({
+            owner: user,
+            title: listTitle,
+            detail: listDetail,
+            schema: BYTES,
+            itemIds: itemIds,
+            drip: drip
+        });
         IBulletin(bulletinAddr).registerList(list);
     }
 
@@ -794,7 +904,14 @@ contract Deploy is Script {
         items.push(item4);
         items.push(item5);
 
-        registerList(account, bulletinAddr, items, unicode"Storytime with Aster // 胖比媽咪說故事", "", 0);
+        registerList(
+            account,
+            bulletinAddr,
+            items,
+            unicode"Storytime with Aster // 胖比媽咪說故事",
+            "",
+            0
+        );
     }
 
     function registerNujabes() internal {

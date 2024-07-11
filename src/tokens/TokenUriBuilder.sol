@@ -15,14 +15,14 @@ contract TokenUriBuilder {
     /// Builder Router
     /// -----------------------------------------------------------------------
 
-    function build(uint256 builderId, TokenTitle memory title, TokenSource memory source)
-        external
-        view
-        returns (string memory)
-    {
+    function build(
+        uint256 builderId,
+        TokenTitle memory title,
+        TokenSource memory source
+    ) external view returns (string memory) {
         if (builderId == 1) {
             // List owner token.
-            return feedbackForBeverages(title, source);
+            return qsForCroissant(title, source);
         } else if (builderId == 2) {
             // List owner token.
             return recordCoffeeConsumption(title, source);
@@ -41,14 +41,16 @@ contract TokenUriBuilder {
     ///  Getter
     /// -----------------------------------------------------------------------
 
-    function generateSvg(uint256 builderId, address user, address bulletin, uint256 listId, address logger)
-        public
-        view
-        returns (string memory)
-    {
+    function generateSvg(
+        uint256 builderId,
+        address user,
+        address bulletin,
+        uint256 listId,
+        address logger
+    ) public view returns (string memory) {
         if (builderId == 1) {
             // List owner token.
-            return generateSvgForBeverages(bulletin, listId, logger);
+            return generateSvgForQsForCroissant(bulletin, listId, logger);
         } else if (builderId == 2) {
             // List owner token.
             return generateSvgForCoffeeConsumption(bulletin, listId, logger);
@@ -64,300 +66,364 @@ contract TokenUriBuilder {
     }
 
     /// -----------------------------------------------------------------------
-    /// SVG Template #1: Population
+    /// SVG Template #1: Coffee with $CROISSANT
     /// -----------------------------------------------------------------------
 
-    function feedbackForBeverages(TokenTitle memory title, TokenSource memory source)
-        public
-        view
-        returns (string memory)
-    {
-        return JSON._formattedMetadata(
-            title.name, title.desc, generateSvgForBeverages(source.bulletin, source.listId, source.logger)
-        );
+    function qsForCroissant(
+        TokenTitle memory title,
+        TokenSource memory source
+    ) public view returns (string memory) {
+        return
+            JSON._formattedMetadata(
+                title.name,
+                title.desc,
+                generateSvgForQsForCroissant(
+                    source.bulletin,
+                    source.listId,
+                    source.logger
+                )
+            );
     }
 
-    function generateSvgForBeverages(address bulletin, uint256 listId, address logger)
-        public
-        view
-        returns (string memory)
-    {
+    function generateSvgForQsForCroissant(
+        address bulletin,
+        uint256 listId,
+        address logger
+    ) public view returns (string memory) {
         List memory list;
-        (bulletin != address(0)) ? list = IBulletin(bulletin).getList(listId) : list;
+        (bulletin != address(0))
+            ? list = IBulletin(bulletin).getList(listId)
+            : list;
 
-        (uint256 flavor, uint256 body, uint256 aroma) = getPerformanceData(bulletin, listId, logger);
-
-        return string.concat(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "40"),
-                    SVG._prop("font-size", "20"),
-                    SVG._prop("fill", "#00040a")
-                ),
-                list.title
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#FFBE0B"),
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "50"),
-                    SVG._prop("width", "160"),
-                    SVG._prop("height", "5")
-                ),
-                SVG.NULL
-            ),
-            loadCoffeeConsumption(bulletin, listId),
-            buildPerformanceBars(flavor, body, aroma),
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "200"),
-                    SVG._prop("y", "285"),
-                    SVG._prop("font-size", "9"),
-                    SVG._prop("fill", "#c4c7c4")
-                ),
-                string.concat("by ", shorten(list.owner))
-            ),
-            "</svg>"
+        (uint256 flavor, uint256 body, uint256 aroma) = getPerformanceData(
+            bulletin,
+            listId,
+            logger
         );
+
+        return
+            string.concat(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "40"),
+                        SVG._prop("font-size", "20"),
+                        SVG._prop("fill", "#00040a")
+                    ),
+                    list.title
+                ),
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#FFBE0B"),
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "50"),
+                        SVG._prop("width", "160"),
+                        SVG._prop("height", "5")
+                    ),
+                    SVG.NULL
+                ),
+                loadCoffeeConsumption(bulletin, listId),
+                buildPerformanceBars(flavor, body, aroma),
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "200"),
+                        SVG._prop("y", "285"),
+                        SVG._prop("font-size", "9"),
+                        SVG._prop("fill", "#c4c7c4")
+                    ),
+                    string.concat("by ", shorten(list.owner))
+                ),
+                "</svg>"
+            );
     }
 
     // TODO: Change to something that a coffe shop might want to know about its customers
     // TODO: 2 groups: coffee vs pitcher customers
-    function getPerformanceData(address bulletin, uint256 listId, address logger)
-        public
-        view
-        returns (uint256 flavor, uint256 body, uint256 aroma)
-    {
+    function getPerformanceData(
+        address bulletin,
+        uint256 listId,
+        address logger
+    ) public view returns (uint256 flavor, uint256 body, uint256 aroma) {
         Touchpoint memory tp;
         uint256 _flavor;
         uint256 _body;
         uint256 _aroma;
 
         if (logger != address(0)) {
-            uint256 nonce = ILog(logger).getNonceByItemId(bulletin, listId, uint256(0));
+            uint256 nonce = ILog(logger).getNonceByItemId(
+                bulletin,
+                listId,
+                uint256(0)
+            );
 
             if (nonce > 0) {
                 for (uint256 i = 1; i <= nonce; ++i) {
-                    tp = ILog(logger).getTouchpointByItemIdByNonce(bulletin, listId, uint256(0), i);
+                    tp = ILog(logger).getTouchpointByItemIdByNonce(
+                        bulletin,
+                        listId,
+                        uint256(0),
+                        i
+                    );
 
                     // Decode data and count user response.
                     // if (tp.logType == LogType.TOKEN) {
-                        (_flavor, _body, _aroma) = abi.decode(tp.data, (uint256, uint256, uint256));
+                    (_flavor, _body, _aroma) = abi.decode(
+                        tp.data,
+                        (uint256, uint256, uint256)
+                    );
 
-                        flavor += _flavor;
-                        body += _body;
-                        aroma += _aroma;
+                    flavor += _flavor;
+                    body += _body;
+                    aroma += _aroma;
                     // }
                 }
 
-                flavor = flavor / nonce * 15;
-                body = body / nonce * 15;
-                aroma = aroma / nonce * 15;
+                flavor = (flavor / nonce) * 15;
+                body = (body / nonce) * 15;
+                aroma = (aroma / nonce) * 15;
             }
         }
     }
 
-    function loadCoffeeConsumption(address bulletin, uint256 listId) public view returns (string memory) {
+    function loadCoffeeConsumption(
+        address bulletin,
+        uint256 listId
+    ) public view returns (string memory) {
         uint256 runs;
-        (bulletin != address(0)) ? runs = IBulletin(bulletin).runsByList(listId) : runs;
+        (bulletin != address(0))
+            ? runs = IBulletin(bulletin).runsByList(listId)
+            : runs;
 
-        return string.concat(
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "70"),
-                    SVG._prop("y", "115"),
-                    SVG._prop("font-size", "40"),
-                    SVG._prop("fill", "#00040a")
+        return
+            string.concat(
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "70"),
+                        SVG._prop("y", "115"),
+                        SVG._prop("font-size", "40"),
+                        SVG._prop("fill", "#00040a")
+                    ),
+                    SVG._uint2str(runs)
                 ),
-                SVG._uint2str(runs)
-            ),
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "155"),
-                    SVG._prop("y", "115"),
-                    SVG._prop("font-size", "15"),
-                    SVG._prop("fill", "#899499")
-                ),
-                "# of cups"
-            )
-        );
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "155"),
+                        SVG._prop("y", "115"),
+                        SVG._prop("font-size", "15"),
+                        SVG._prop("fill", "#899499")
+                    ),
+                    "# of cups"
+                )
+            );
     }
 
-    function buildPerformanceBars(uint256 flavor, uint256 body, uint256 aroma) public pure returns (string memory) {
-        return string.concat(buildFlavorBars(flavor), buildBodyBars(body), buildAromaBars(aroma));
+    function buildPerformanceBars(
+        uint256 flavor,
+        uint256 body,
+        uint256 aroma
+    ) public pure returns (string memory) {
+        return
+            string.concat(
+                buildFlavorBars(flavor),
+                buildBodyBars(body),
+                buildAromaBars(aroma)
+            );
     }
 
-    function buildFlavorBars(uint256 flavor) public pure returns (string memory) {
-        return string.concat(
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "30"),
-                    SVG._prop("y", "160"),
-                    SVG._prop("font-size", "12"),
-                    SVG._prop("fill", "#7f7053")
+    function buildFlavorBars(
+        uint256 flavor
+    ) public pure returns (string memory) {
+        return
+            string.concat(
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "30"),
+                        SVG._prop("y", "160"),
+                        SVG._prop("font-size", "12"),
+                        SVG._prop("fill", "#7f7053")
+                    ),
+                    "Flavor"
                 ),
-                "Flavor"
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#ffecb6"),
-                    SVG._prop("x", "80"),
-                    SVG._prop("y", "145"),
-                    SVG._prop("width", "150"),
-                    SVG._prop("height", "20"),
-                    SVG._prop("rx", "2")
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#ffecb6"),
+                        SVG._prop("x", "80"),
+                        SVG._prop("y", "145"),
+                        SVG._prop("width", "150"),
+                        SVG._prop("height", "20"),
+                        SVG._prop("rx", "2")
+                    ),
+                    SVG.NULL
                 ),
-                SVG.NULL
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#da2121"),
-                    SVG._prop("x", "80"),
-                    SVG._prop("y", "145"),
-                    SVG._prop("width", SVG._uint2str(flavor)),
-                    SVG._prop("height", "20"),
-                    SVG._prop("rx", "2")
-                ),
-                SVG.NULL
-            )
-        );
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#da2121"),
+                        SVG._prop("x", "80"),
+                        SVG._prop("y", "145"),
+                        SVG._prop("width", SVG._uint2str(flavor)),
+                        SVG._prop("height", "20"),
+                        SVG._prop("rx", "2")
+                    ),
+                    SVG.NULL
+                )
+            );
     }
 
     function buildBodyBars(uint256 body) internal pure returns (string memory) {
-        return string.concat(
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "30"),
-                    SVG._prop("y", "200"),
-                    SVG._prop("font-size", "12"),
-                    SVG._prop("fill", "#7f7053")
+        return
+            string.concat(
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "30"),
+                        SVG._prop("y", "200"),
+                        SVG._prop("font-size", "12"),
+                        SVG._prop("fill", "#7f7053")
+                    ),
+                    "Body"
                 ),
-                "Body"
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#ffecb6"),
-                    SVG._prop("x", "80"),
-                    SVG._prop("y", "185"),
-                    SVG._prop("width", "150"),
-                    SVG._prop("height", "20"),
-                    SVG._prop("rx", "2")
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#ffecb6"),
+                        SVG._prop("x", "80"),
+                        SVG._prop("y", "185"),
+                        SVG._prop("width", "150"),
+                        SVG._prop("height", "20"),
+                        SVG._prop("rx", "2")
+                    ),
+                    SVG.NULL
                 ),
-                SVG.NULL
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#da2121"),
-                    SVG._prop("x", "80"),
-                    SVG._prop("y", "185"),
-                    SVG._prop("width", SVG._uint2str(body)),
-                    SVG._prop("height", "20"),
-                    SVG._prop("rx", "2")
-                ),
-                SVG.NULL
-            )
-        );
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#da2121"),
+                        SVG._prop("x", "80"),
+                        SVG._prop("y", "185"),
+                        SVG._prop("width", SVG._uint2str(body)),
+                        SVG._prop("height", "20"),
+                        SVG._prop("rx", "2")
+                    ),
+                    SVG.NULL
+                )
+            );
     }
 
-    function buildAromaBars(uint256 aroma) internal pure returns (string memory) {
-        return string.concat(
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "30"),
-                    SVG._prop("y", "240"),
-                    SVG._prop("font-size", "12"),
-                    SVG._prop("fill", "#7f7053")
+    function buildAromaBars(
+        uint256 aroma
+    ) internal pure returns (string memory) {
+        return
+            string.concat(
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "30"),
+                        SVG._prop("y", "240"),
+                        SVG._prop("font-size", "12"),
+                        SVG._prop("fill", "#7f7053")
+                    ),
+                    "Aroma"
                 ),
-                "Aroma"
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#ffecb6"),
-                    SVG._prop("x", "80"),
-                    SVG._prop("y", "225"),
-                    SVG._prop("width", "150"),
-                    SVG._prop("height", "20"),
-                    SVG._prop("rx", "2")
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#ffecb6"),
+                        SVG._prop("x", "80"),
+                        SVG._prop("y", "225"),
+                        SVG._prop("width", "150"),
+                        SVG._prop("height", "20"),
+                        SVG._prop("rx", "2")
+                    ),
+                    SVG.NULL
                 ),
-                SVG.NULL
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#da2121"),
-                    SVG._prop("x", "80"),
-                    SVG._prop("y", "225"),
-                    SVG._prop("width", SVG._uint2str(aroma)),
-                    SVG._prop("height", "20"),
-                    SVG._prop("rx", "2")
-                ),
-                SVG.NULL
-            )
-        );
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#da2121"),
+                        SVG._prop("x", "80"),
+                        SVG._prop("y", "225"),
+                        SVG._prop("width", SVG._uint2str(aroma)),
+                        SVG._prop("height", "20"),
+                        SVG._prop("rx", "2")
+                    ),
+                    SVG.NULL
+                )
+            );
     }
 
     /// -----------------------------------------------------------------------
-    /// SVG Template #2: Record Coffee Consumption
+    /// SVG Template #2: Coffee with $COFFEE
     /// -----------------------------------------------------------------------
 
-    function recordCoffeeConsumption(TokenTitle memory title, TokenSource memory source)
-        public
-        view
-        returns (string memory)
-    {
-        return JSON._formattedMetadata(
-            title.name, title.desc, generateSvgForCoffeeConsumption(source.bulletin, source.listId, source.logger)
-        );
+    function recordCoffeeConsumption(
+        TokenTitle memory title,
+        TokenSource memory source
+    ) public view returns (string memory) {
+        return
+            JSON._formattedMetadata(
+                title.name,
+                title.desc,
+                generateSvgForCoffeeConsumption(
+                    source.bulletin,
+                    source.listId,
+                    source.logger
+                )
+            );
     }
 
-    function generateSvgForCoffeeConsumption(address bulletin, uint256 listId, address logger)
-        public
-        view
-        returns (string memory)
-    {
+    function generateSvgForCoffeeConsumption(
+        address bulletin,
+        uint256 listId,
+        address logger
+    ) public view returns (string memory) {
         List memory list;
-        (bulletin != address(0)) ? list = IBulletin(bulletin).getList(listId) : list;
+        (bulletin != address(0))
+            ? list = IBulletin(bulletin).getList(listId)
+            : list;
 
-        (uint256 coffee_gram, uint256 water_liter, uint256 compost_gram) = getCoffeeUsageData(bulletin, listId, logger);
+        (
+            uint256 coffee_gram,
+            uint256 water_liter,
+            uint256 compost_gram
+        ) = getCoffeeUsageData(bulletin, listId, logger);
 
-        return string.concat(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "40"),
-                    SVG._prop("font-size", "20"),
-                    SVG._prop("fill", "#00040a")
+        return
+            string.concat(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "40"),
+                        SVG._prop("font-size", "20"),
+                        SVG._prop("fill", "#00040a")
+                    ),
+                    list.title
                 ),
-                list.title
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#FFBE0B"),
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "50"),
-                    SVG._prop("width", "160"),
-                    SVG._prop("height", "5")
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#FFBE0B"),
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "50"),
+                        SVG._prop("width", "160"),
+                        SVG._prop("height", "5")
+                    ),
+                    SVG.NULL
                 ),
-                SVG.NULL
-            ),
-            loadCoffeeConsumption(bulletin, listId), // TODO: Need to update consumption calculation
-            buildCoffeeUsageSvg(coffee_gram, water_liter, compost_gram),
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "200"),
-                    SVG._prop("y", "285"),
-                    SVG._prop("font-size", "9"),
-                    SVG._prop("fill", "#c4c7c4")
+                loadCoffeeConsumption(bulletin, listId), // TODO: Need to update consumption calculation
+                buildCoffeeUsageSvg(coffee_gram, water_liter, compost_gram),
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "200"),
+                        SVG._prop("y", "285"),
+                        SVG._prop("font-size", "9"),
+                        SVG._prop("fill", "#c4c7c4")
+                    ),
+                    string.concat("by ", shorten(list.owner))
                 ),
-                string.concat("by ", shorten(list.owner))
-            ),
-            "</svg>"
-        );
+                "</svg>"
+            );
     }
 
-    function getCoffeeUsageData(address bulletin, uint256 listId, address logger)
+    function getCoffeeUsageData(
+        address bulletin,
+        uint256 listId,
+        address logger
+    )
         public
         view
         returns (uint256 coffee_gram, uint256 water_liter, uint256 compost_gram)
@@ -368,141 +434,180 @@ contract TokenUriBuilder {
         uint256 _compost_gram;
 
         if (logger != address(0)) {
-            uint256 nonce = ILog(logger).getNonceByItemId(bulletin, listId, uint256(0));
+            uint256 nonce = ILog(logger).getNonceByItemId(
+                bulletin,
+                listId,
+                uint256(0)
+            );
 
             if (nonce > 0) {
                 for (uint256 i = 1; i <= nonce; ++i) {
-                    tp = ILog(logger).getTouchpointByItemIdByNonce(bulletin, listId, uint256(0), i);
+                    tp = ILog(logger).getTouchpointByItemIdByNonce(
+                        bulletin,
+                        listId,
+                        uint256(0),
+                        i
+                    );
 
                     // Decode data and count user response.
                     // if (tp.logType == LogType.TOKEN) {
-                        (_coffee_gram, _water_liter, _compost_gram) = abi.decode(tp.data, (uint256, uint256, uint256));
-                        coffee_gram += _coffee_gram;
-                        water_liter += _water_liter;
-                        compost_gram += _compost_gram;
+                    (_coffee_gram, _water_liter, _compost_gram) = abi.decode(
+                        tp.data,
+                        (uint256, uint256, uint256)
+                    );
+                    coffee_gram += _coffee_gram;
+                    water_liter += _water_liter;
+                    compost_gram += _compost_gram;
                     // }
                 }
             }
         }
     }
 
-    function buildCoffeeUsageSvg(uint256 coffee_gram, uint256 water_liter, uint256 compost_gram)
-        public
-        pure
-        returns (string memory)
-    {
-        return string.concat(
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "165"),
-                    SVG._prop("font-size", "14"),
-                    SVG._prop("fill", "#808080")
+    function buildCoffeeUsageSvg(
+        uint256 coffee_gram,
+        uint256 water_liter,
+        uint256 compost_gram
+    ) public pure returns (string memory) {
+        return
+            string.concat(
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "165"),
+                        SVG._prop("font-size", "14"),
+                        SVG._prop("fill", "#808080")
+                    ),
+                    string.concat(
+                        "Coffee beans: ",
+                        SVG._uint2str(coffee_gram),
+                        " g"
+                    )
                 ),
-                string.concat("Coffee beans: ", SVG._uint2str(coffee_gram), " g")
-            ),
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "195"),
-                    SVG._prop("font-size", "14"),
-                    SVG._prop("fill", "#808080")
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "195"),
+                        SVG._prop("font-size", "14"),
+                        SVG._prop("fill", "#808080")
+                    ),
+                    string.concat(
+                        "Filtered water: ",
+                        SVG._uint2str(water_liter),
+                        " lt"
+                    )
                 ),
-                string.concat("Filtered water: ", SVG._uint2str(water_liter), " lt")
-            ),
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "225"),
-                    SVG._prop("font-size", "14"),
-                    SVG._prop("fill", "#808080")
-                ),
-                string.concat("Compost: ", SVG._uint2str(compost_gram), " g")
-            )
-        );
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "225"),
+                        SVG._prop("font-size", "14"),
+                        SVG._prop("fill", "#808080")
+                    ),
+                    string.concat(
+                        "Compost: ",
+                        SVG._uint2str(compost_gram),
+                        " g"
+                    )
+                )
+            );
     }
 
     /// -----------------------------------------------------------------------
-    /// SVG Template #3: Feedback for Delivery
+    /// SVG Template #3: Customer Response for Pitcher Qs
     /// -----------------------------------------------------------------------
 
-    function feedbackForDelivery(TokenTitle memory title, TokenSource memory source)
-        public
-        view
-        returns (string memory)
-    {
-        return JSON._formattedMetadata(
-            title.name, title.desc, generateSvgForDeliveryService(source.bulletin, source.listId, source.logger)
-        );
+    function feedbackForDelivery(
+        TokenTitle memory title,
+        TokenSource memory source
+    ) public view returns (string memory) {
+        return
+            JSON._formattedMetadata(
+                title.name,
+                title.desc,
+                generateSvgForDeliveryService(
+                    source.bulletin,
+                    source.listId,
+                    source.logger
+                )
+            );
     }
 
-    function generateSvgForDeliveryService(address bulletin, uint256 listId, address logger)
-        public
-        view
-        returns (string memory)
-    {
+    function generateSvgForDeliveryService(
+        address bulletin,
+        uint256 listId,
+        address logger
+    ) public view returns (string memory) {
         List memory list = IBulletin(bulletin).getList(listId);
-        (uint256 flavor, uint256 body, uint256 aroma) = getPerformanceData(bulletin, listId, logger);
-
-        return string.concat(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "40"),
-                    SVG._prop("font-size", "20"),
-                    SVG._prop("fill", "#00040a")
-                ),
-                list.title
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#FFBE0B"),
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "50"),
-                    SVG._prop("width", "160"),
-                    SVG._prop("height", "5")
-                ),
-                SVG.NULL
-            ),
-            loadPitcherConsumption(bulletin, listId, logger),
-            buildPerformanceBars(flavor, body, aroma),
-            "</svg>"
+        (uint256 flavor, uint256 body, uint256 aroma) = getPerformanceData(
+            bulletin,
+            listId,
+            logger
         );
+
+        return
+            string.concat(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "40"),
+                        SVG._prop("font-size", "20"),
+                        SVG._prop("fill", "#00040a")
+                    ),
+                    list.title
+                ),
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#FFBE0B"),
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "50"),
+                        SVG._prop("width", "160"),
+                        SVG._prop("height", "5")
+                    ),
+                    SVG.NULL
+                ),
+                loadPitcherConsumption(bulletin, listId, logger),
+                buildPerformanceBars(flavor, body, aroma),
+                "</svg>"
+            );
     }
 
-    function loadPitcherConsumption(address bulletin, uint256 listId, address logger)
-        public
-        view
-        returns (string memory)
-    {
-        return string.concat(
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "70"),
-                    SVG._prop("y", "115"),
-                    SVG._prop("font-size", "40"),
-                    SVG._prop("fill", "#00040a")
+    function loadPitcherConsumption(
+        address bulletin,
+        uint256 listId,
+        address logger
+    ) public view returns (string memory) {
+        return
+            string.concat(
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "70"),
+                        SVG._prop("y", "115"),
+                        SVG._prop("font-size", "40"),
+                        SVG._prop("fill", "#00040a")
+                    ),
+                    SVG._uint2str(
+                        loadNumOfRecylcedPitchers(bulletin, listId, logger)
+                    )
                 ),
-                SVG._uint2str(loadNumOfRecylcedPitchers(bulletin, listId, logger))
-            ),
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "155"),
-                    SVG._prop("y", "115"),
-                    SVG._prop("font-size", "12"),
-                    SVG._prop("fill", "#899499")
-                ),
-                "Pitchers Recylced"
-            )
-        );
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "155"),
+                        SVG._prop("y", "115"),
+                        SVG._prop("font-size", "12"),
+                        SVG._prop("fill", "#899499")
+                    ),
+                    "Pitchers Recylced"
+                )
+            );
     }
 
-    function loadNumOfRecylcedPitchers(address bulletin, uint256 listId, address logger)
-        public
-        view
-        returns (uint256 numOfRecylced)
-    {
+    function loadNumOfRecylcedPitchers(
+        address bulletin,
+        uint256 listId,
+        address logger
+    ) public view returns (uint256 numOfRecylced) {
         Touchpoint memory tp;
         bool recycled;
 
@@ -510,17 +615,26 @@ contract TokenUriBuilder {
         uint256 itemId = 6;
 
         if (logger != address(0)) {
-            uint256 nonce = ILog(logger).getNonceByItemId(bulletin, listId, itemId);
+            uint256 nonce = ILog(logger).getNonceByItemId(
+                bulletin,
+                listId,
+                itemId
+            );
 
             if (nonce > 0) {
                 for (uint256 i = 1; i <= nonce; ++i) {
                     // Decode data and count user response.
-                    tp = ILog(logger).getTouchpointByItemIdByNonce(bulletin, listId, itemId, i);
+                    tp = ILog(logger).getTouchpointByItemIdByNonce(
+                        bulletin,
+                        listId,
+                        itemId,
+                        i
+                    );
                     // if (tp.logType == LogType.TOKEN) {
-                        delete recycled;
-                        (recycled) = abi.decode(tp.data, (bool));
+                    delete recycled;
+                    (recycled) = abi.decode(tp.data, (bool));
 
-                        (recycled) ? ++numOfRecylced : numOfRecylced;
+                    (recycled) ? ++numOfRecylced : numOfRecylced;
                     // }
                 }
             }
@@ -597,24 +711,36 @@ contract TokenUriBuilder {
     // }
 
     /// -----------------------------------------------------------------------
-    /// SVG Template #4: Build Delivery Records
+    /// SVG Template #4: Helper's Track Record
     /// -----------------------------------------------------------------------
 
-    function deliveryRecord(TokenTitle memory title, TokenSource memory source) public view returns (string memory) {
-        return JSON._formattedMetadata(
-            title.name,
-            title.desc,
-            generateSvgForDeliveryRecord(source.user, source.bulletin, source.listId, source.logger)
-        );
+    function deliveryRecord(
+        TokenTitle memory title,
+        TokenSource memory source
+    ) public view returns (string memory) {
+        return
+            JSON._formattedMetadata(
+                title.name,
+                title.desc,
+                generateSvgForDeliveryRecord(
+                    source.user,
+                    source.bulletin,
+                    source.listId,
+                    source.logger
+                )
+            );
     }
 
-    function generateSvgForDeliveryRecord(address user, address bulletin, uint256 listId, address logger)
-        public
-        view
-        returns (string memory)
-    {
+    function generateSvgForDeliveryRecord(
+        address user,
+        address bulletin,
+        uint256 listId,
+        address logger
+    ) public view returns (string memory) {
         List memory list = IBulletin(bulletin).getList(listId);
-        uint256 logId = (logger != address(0)) ? ILog(logger).getLogId(user, bulletin, listId) : 0;
+        uint256 logId = (logger != address(0))
+            ? ILog(logger).getLogId(user, bulletin, listId)
+            : 0;
 
         Touchpoint[] memory tps;
         tps = ILog(logger).getTouchpointsByLog(logId);
@@ -627,51 +753,55 @@ contract TokenUriBuilder {
         for (uint256 i; i < length; ++i) {
             if (tps[i].itemId == 0) {
                 // Decode data and load user response.
-                (fridge, recipient, recycled) = abi.decode(tps[i].data, (uint256, address, bool));
+                (fridge, recipient, recycled) = abi.decode(
+                    tps[i].data,
+                    (uint256, address, bool)
+                );
             }
         }
 
-        return string.concat(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "40"),
-                    SVG._prop("font-size", "20"),
-                    SVG._prop("fill", "#00040a")
+        return
+            string.concat(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "40"),
+                        SVG._prop("font-size", "20"),
+                        SVG._prop("fill", "#00040a")
+                    ),
+                    shorten(user)
                 ),
-                shorten(user)
-            ),
-            SVG._rect(
-                string.concat(
-                    SVG._prop("fill", "#FFBE0B"),
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "50"),
-                    SVG._prop("width", "160"),
-                    SVG._prop("height", "5")
+                SVG._rect(
+                    string.concat(
+                        SVG._prop("fill", "#FFBE0B"),
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "50"),
+                        SVG._prop("width", "160"),
+                        SVG._prop("height", "5")
+                    ),
+                    SVG.NULL
                 ),
-                SVG.NULL
-            ),
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "100"),
-                    SVG._prop("font-size", "20"),
-                    SVG._prop("fill", "#00040a")
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "100"),
+                        SVG._prop("font-size", "20"),
+                        SVG._prop("fill", "#00040a")
+                    ),
+                    list.title
                 ),
-                list.title
-            ),
-            loadDeliveryTasks(bulletin, list.owner, list.itemIds),
-            loadDeliveryRecord(fridge, recipient, recycled),
-            "</svg>"
-        );
+                loadDeliveryTasks(bulletin, list.owner, list.itemIds),
+                loadDeliveryRecord(fridge, recipient, recycled),
+                "</svg>"
+            );
     }
 
-    function loadDeliveryTasks(address bulletin, address owner, uint256[] memory itemIds)
-        public
-        view
-        returns (string memory)
-    {
+    function loadDeliveryTasks(
+        address bulletin,
+        address owner,
+        uint256[] memory itemIds
+    ) public view returns (string memory) {
         if (owner != address(0)) {
             uint256 length = (itemIds.length > 3) ? 3 : itemIds.length;
             string memory text;
@@ -698,36 +828,41 @@ contract TokenUriBuilder {
         }
     }
 
-    function loadDeliveryRecord(uint256 fridge, address recipient, bool recycled) public pure returns (string memory) {
-        return string.concat(
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "160"),
-                    SVG._prop("font-size", "12"),
-                    SVG._prop("fill", "#000000")
+    function loadDeliveryRecord(
+        uint256 fridge,
+        address recipient,
+        bool recycled
+    ) public pure returns (string memory) {
+        return
+            string.concat(
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "160"),
+                        SVG._prop("font-size", "12"),
+                        SVG._prop("fill", "#000000")
+                    ),
+                    string.concat("Fridge #", SVG._uint2str(fridge))
                 ),
-                string.concat("Fridge #", SVG._uint2str(fridge))
-            ),
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "210"),
-                    SVG._prop("font-size", "12"),
-                    SVG._prop("fill", "#000000")
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "210"),
+                        SVG._prop("font-size", "12"),
+                        SVG._prop("fill", "#000000")
+                    ),
+                    shorten(recipient)
                 ),
-                shorten(recipient)
-            ),
-            SVG._text(
-                string.concat(
-                    SVG._prop("x", "20"),
-                    SVG._prop("y", "260"),
-                    SVG._prop("font-size", "12"),
-                    SVG._prop("fill", "#000000")
-                ),
-                recycled ? "Yes" : "Not yet"
-            )
-        );
+                SVG._text(
+                    string.concat(
+                        SVG._prop("x", "20"),
+                        SVG._prop("y", "260"),
+                        SVG._prop("font-size", "12"),
+                        SVG._prop("fill", "#000000")
+                    ),
+                    recycled ? "Yes" : "Not yet"
+                )
+            );
     }
 
     /// -----------------------------------------------------------------------
