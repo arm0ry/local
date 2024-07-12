@@ -110,13 +110,13 @@ contract TokenUriBuilder {
                     "Did you have coffee with food?",
                     percentage,
                     " % said yes",
-                    140
+                    160
                 ),
                 buildQaWithNumericalResponse(
                     "How are you feeling?",
                     score,
                     " / 10",
-                    190
+                    210
                 ),
                 buildSignature(list.owner),
                 "</svg>"
@@ -224,19 +224,19 @@ contract TokenUriBuilder {
                     "Cost of Cups",
                     costOfCups,
                     " ($)",
-                    140
+                    160
                 ),
                 buildQaWithCurrencyResponse(
                     "Cost of Labor",
                     costOfLabor,
                     " ($)",
-                    190
+                    210
                 ),
                 buildQaWithCurrencyResponse(
                     "Cost of Labor Benefits",
                     costOfBenefits,
                     " ($)",
-                    240
+                    260
                 ),
                 buildSignature(list.owner),
                 "</svg>"
@@ -341,19 +341,19 @@ contract TokenUriBuilder {
                     "Cost of Delivery",
                     costOfDelivery,
                     " ($)",
-                    140
+                    160
                 ),
                 buildQaWithCurrencyResponse(
                     "Cost of Labor",
                     costOfLabor,
                     " ($)",
-                    190
+                    210
                 ),
                 buildQaWithCurrencyResponse(
                     "Cost to Recycle",
                     costOfRecycling,
                     " ($)",
-                    240
+                    260
                 ),
                 buildSignature(list.owner),
                 "</svg>"
@@ -543,9 +543,9 @@ contract TokenUriBuilder {
         return
             SVG._text(
                 string.concat(
-                    SVG._prop("x", "70"),
-                    SVG._prop("y", "115"),
-                    SVG._prop("font-size", "40"),
+                    SVG._prop("x", "20"),
+                    SVG._prop("y", "100"),
+                    SVG._prop("font-size", "20"),
                     SVG._prop("fill", "#00040a")
                 ),
                 header

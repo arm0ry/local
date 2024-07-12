@@ -35,38 +35,65 @@ contract TokenCurveTest is Test {
     Item[] items;
     uint256[] itemIds;
     Item item1 =
-        Item({review: false, expire: PAST, owner: makeAddr("alice"), title: TEST, detail: TEST, schema: BYTES, drip: 0});
+        Item({
+            review: false,
+            expire: PAST,
+            owner: makeAddr("alice"),
+            title: TEST,
+            detail: TEST,
+            schema: BYTES,
+            drip: 0
+        });
     Item item2 =
-        Item({review: false, expire: FUTURE, owner: makeAddr("bob"), title: TEST, detail: TEST, schema: BYTES, drip: 0});
-    Item item3 = Item({
-        review: false,
-        expire: FUTURE,
-        owner: makeAddr("charlie"),
-        title: TEST,
-        detail: TEST,
-        schema: BYTES,
-        drip: 0
-    });
-    Item item4 = Item({
-        review: true,
-        expire: PAST,
-        owner: makeAddr("charlie"),
-        title: TEST,
-        detail: TEST,
-        schema: BYTES,
-        drip: 0
-    });
-    Item item5 = Item({
-        review: true,
-        expire: FUTURE,
-        owner: makeAddr("alice"),
-        title: TEST,
-        detail: TEST,
-        schema: BYTES,
-        drip: 0
-    });
+        Item({
+            review: false,
+            expire: FUTURE,
+            owner: makeAddr("bob"),
+            title: TEST,
+            detail: TEST,
+            schema: BYTES,
+            drip: 0
+        });
+    Item item3 =
+        Item({
+            review: false,
+            expire: FUTURE,
+            owner: makeAddr("charlie"),
+            title: TEST,
+            detail: TEST,
+            schema: BYTES,
+            drip: 0
+        });
+    Item item4 =
+        Item({
+            review: true,
+            expire: PAST,
+            owner: makeAddr("charlie"),
+            title: TEST,
+            detail: TEST,
+            schema: BYTES,
+            drip: 0
+        });
+    Item item5 =
+        Item({
+            review: true,
+            expire: FUTURE,
+            owner: makeAddr("alice"),
+            title: TEST,
+            detail: TEST,
+            schema: BYTES,
+            drip: 0
+        });
     Item item6 =
-        Item({review: true, expire: FUTURE, owner: makeAddr("bob"), title: TEST, detail: TEST, schema: BYTES, drip: 0});
+        Item({
+            review: true,
+            expire: FUTURE,
+            owner: makeAddr("bob"),
+            title: TEST,
+            detail: TEST,
+            schema: BYTES,
+            drip: 0
+        });
 
     /// @dev For currency use.
     Curve curve;
@@ -273,14 +300,10 @@ contract TokenCurveTest is Test {
         uint32 burn_c
     ) public payable {
         // vm.assume(burn_a > mint_a && burn_b > mint_b && burn_c > mint_c);
-
         //         deployTokenUriBuilder();
-
         // deployTokenMinter();
         // deployCurrency(user);
-
         // vm.warp(block.timestamp + 100);
-
         // vm.expectRevert(TokenCurve.InvalidCurve.selector);
         // vm.prank(alice);
         // tc.registerCurve(
@@ -395,11 +418,24 @@ contract TokenCurveTest is Test {
         vm.warp(block.timestamp + 100);
 
         // Set up token data.
-        TokenTitle memory title = TokenTitle({name: "Token1", desc: "Token Numba 1"});
-        TokenSource memory source =
-            TokenSource({user: address(0), bulletin: address(bulletin), listId: 1, logger: address(0)});
-        TokenBuilder memory builder = TokenBuilder({builder: address(tokenUriBuilder), builderId: 2});
-        TokenMarket memory market = TokenMarket({market: address(tc), limit: 10 ether});
+        TokenTitle memory title = TokenTitle({
+            name: "Token1",
+            desc: "Token Numba 1"
+        });
+        TokenSource memory source = TokenSource({
+            user: address(0),
+            bulletin: address(bulletin),
+            listId: 1,
+            logger: address(0)
+        });
+        TokenBuilder memory builder = TokenBuilder({
+            builder: address(tokenUriBuilder),
+            builderId: 2
+        });
+        TokenMarket memory market = TokenMarket({
+            market: address(tc),
+            limit: 10 ether
+        });
 
         // Set up minter.
         vm.prank(alice);
@@ -425,13 +461,13 @@ contract TokenCurveTest is Test {
         assertEq(tc.treasuries(1), burnPrice);
 
         // emit log_string(tokenUriBuilder.generateSvg(2, address(bulletin), 1, address(0)));
-        emit log_string(tokenUriBuilder.generateSvgForBeverages(address(bulletin), 1, address(0)));
-
-        (uint256 flavor, uint256 aroma, uint256 body) =
-            tokenUriBuilder.getPerformanceData(address(bulletin), 1, address(0));
-        // emit log_uint(flavor);
-        // emit log_uint(aroma);
-        // emit log_uint(body);
+        emit log_string(
+            tokenUriBuilder.generateSvgForQsForCroissant(
+                address(bulletin),
+                1,
+                address(0)
+            )
+        );
     }
 
     function test_LinearCurve_Support_SomeCurrency_Subsidized(
@@ -483,7 +519,10 @@ contract TokenCurveTest is Test {
         assertEq(address(tc).balance - collected.amountConverted, burnPrice);
         assertEq(currency.balanceOf(alice), floor);
         assertEq(address(alice).balance, mintPrice - burnPrice - floor);
-        assertEq(currency.balanceOf(bob), 10000000000000 ether - currencyPayment);
+        assertEq(
+            currency.balanceOf(bob),
+            10000000000000 ether - currencyPayment
+        );
     }
 
     function test_LinearCurve_Support_SomeCurrency_Unsubsidized(
@@ -660,7 +699,15 @@ contract TokenCurveTest is Test {
 
         // Set up.
         uint256 curveId = 1;
-        test_LinearCurve_Support_NoCurrency(scale, mint_a, mint_b, mint_c, burn_a, burn_b, burn_c);
+        test_LinearCurve_Support_NoCurrency(
+            scale,
+            mint_a,
+            mint_b,
+            mint_c,
+            burn_a,
+            burn_b,
+            burn_c
+        );
 
         // Burn.
         vm.prank(bob);
@@ -683,7 +730,15 @@ contract TokenCurveTest is Test {
         uint32 burn_c
     ) public payable {
         // Set up.
-        test_LinearCurve_Support_NoCurrency(scale, mint_a, mint_b, mint_c, burn_a, burn_b, burn_c);
+        test_LinearCurve_Support_NoCurrency(
+            scale,
+            mint_a,
+            mint_b,
+            mint_c,
+            burn_a,
+            burn_b,
+            burn_c
+        );
 
         // Burn.
         vm.expectRevert(0x82b42900); // `Unauthorized()`
@@ -812,7 +867,15 @@ contract TokenCurveTest is Test {
         vm.assume(scale > 0);
 
         // Set up.
-        testQuadCurve_support(scale, mint_a, mint_b, mint_c, burn_a, burn_b, burn_c);
+        testQuadCurve_support(
+            scale,
+            mint_a,
+            mint_b,
+            mint_c,
+            burn_a,
+            burn_b,
+            burn_c
+        );
 
         // Retrieve for validation.
         uint256 burnPrice = tc.getCurvePrice(false, 1, 0);
@@ -836,7 +899,7 @@ contract TokenCurveTest is Test {
     /// -----------------------------------------------------------------------
 
     function testReceiveETH() public payable {
-        (bool sent,) = address((tc)).call{value: 5 ether}("");
+        (bool sent, ) = address((tc)).call{value: 5 ether}("");
         assert(sent);
     }
 
@@ -848,11 +911,24 @@ contract TokenCurveTest is Test {
         tokenMinter = new TokenMinter();
 
         // Set up token data.
-        TokenTitle memory title = TokenTitle({name: "Token1", desc: "Token Numba 1"});
-        TokenSource memory source =
-            TokenSource({user: address(0), bulletin: address(bulletin), listId: 1, logger: address(0)});
-        TokenBuilder memory builder = TokenBuilder({builder: address(tokenUriBuilder), builderId: 1});
-        TokenMarket memory market = TokenMarket({market: address(tc), limit: 10 ether});
+        TokenTitle memory title = TokenTitle({
+            name: "Token1",
+            desc: "Token Numba 1"
+        });
+        TokenSource memory source = TokenSource({
+            user: address(0),
+            bulletin: address(bulletin),
+            listId: 1,
+            logger: address(0)
+        });
+        TokenBuilder memory builder = TokenBuilder({
+            builder: address(tokenUriBuilder),
+            builderId: 1
+        });
+        TokenMarket memory market = TokenMarket({
+            market: address(tc),
+            limit: 10 ether
+        });
 
         // Set up minter.
         vm.prank(alice);
@@ -953,37 +1029,81 @@ contract TokenCurveTest is Test {
 
         if (curveType == CurveType.LINEAR) {
             // Linear @ supply.
-            assertEq(tc.getCurvePrice(true, curveId, supply), calculatePrice(supply + 1, scale, 0, mint_b, mint_c));
-            assertEq(tc.getCurvePrice(false, curveId, supply), calculatePrice(supply, scale, 0, burn_b, burn_c));
+            assertEq(
+                tc.getCurvePrice(true, curveId, supply),
+                calculatePrice(supply + 1, scale, 0, mint_b, mint_c)
+            );
+            assertEq(
+                tc.getCurvePrice(false, curveId, supply),
+                calculatePrice(supply, scale, 0, burn_b, burn_c)
+            );
 
             // Linear @ supply2.
-            assertEq(tc.getCurvePrice(true, curveId, supply2), calculatePrice(supply2 + 1, scale, 0, mint_b, mint_c));
-            assertEq(tc.getCurvePrice(false, curveId, supply2), calculatePrice(supply2, scale, 0, burn_b, burn_c));
+            assertEq(
+                tc.getCurvePrice(true, curveId, supply2),
+                calculatePrice(supply2 + 1, scale, 0, mint_b, mint_c)
+            );
+            assertEq(
+                tc.getCurvePrice(false, curveId, supply2),
+                calculatePrice(supply2, scale, 0, burn_b, burn_c)
+            );
         } else if (curveType == CurveType.QUADRATIC) {
             // Poly @ supply.
-            assertEq(tc.getCurvePrice(true, curveId, supply), calculatePrice(supply + 1, scale, mint_a, mint_b, mint_c));
-            assertEq(tc.getCurvePrice(false, curveId, supply), calculatePrice(supply, scale, burn_a, burn_b, burn_c));
+            assertEq(
+                tc.getCurvePrice(true, curveId, supply),
+                calculatePrice(supply + 1, scale, mint_a, mint_b, mint_c)
+            );
+            assertEq(
+                tc.getCurvePrice(false, curveId, supply),
+                calculatePrice(supply, scale, burn_a, burn_b, burn_c)
+            );
 
             // Poly @ supply2.
             assertEq(
-                tc.getCurvePrice(true, curveId, supply2), calculatePrice(supply2 + 1, scale, mint_a, mint_b, mint_c)
+                tc.getCurvePrice(true, curveId, supply2),
+                calculatePrice(supply2 + 1, scale, mint_a, mint_b, mint_c)
             );
-            assertEq(tc.getCurvePrice(false, curveId, supply2), calculatePrice(supply2, scale, burn_a, burn_b, burn_c));
+            assertEq(
+                tc.getCurvePrice(false, curveId, supply2),
+                calculatePrice(supply2, scale, burn_a, burn_b, burn_c)
+            );
         } else {
-            assertEq(tc.getCurvePrice(true, curveId, supply), calculatePrice(supply + 1, scale, 0, 0, 0));
-            assertEq(tc.getCurvePrice(false, curveId, supply), calculatePrice(supply, scale, 0, 0, 0));
+            assertEq(
+                tc.getCurvePrice(true, curveId, supply),
+                calculatePrice(supply + 1, scale, 0, 0, 0)
+            );
+            assertEq(
+                tc.getCurvePrice(false, curveId, supply),
+                calculatePrice(supply, scale, 0, 0, 0)
+            );
 
-            assertEq(tc.getCurvePrice(true, curveId, supply2), calculatePrice(supply2 + 1, scale, 0, 0, 0));
-            assertEq(tc.getCurvePrice(false, curveId, supply2), calculatePrice(supply2, scale, 0, 0, 0));
+            assertEq(
+                tc.getCurvePrice(true, curveId, supply2),
+                calculatePrice(supply2 + 1, scale, 0, 0, 0)
+            );
+            assertEq(
+                tc.getCurvePrice(false, curveId, supply2),
+                calculatePrice(supply2, scale, 0, 0, 0)
+            );
         }
     }
 
-    function calculatePrice(uint256 supply, uint256 scale, uint256 constant_a, uint256 constant_b, uint256 constant_c)
-        internal
-        pure
-        returns (uint256)
-    {
-        return constant_a * (supply ** 2) * scale + constant_b * supply * scale + constant_c * scale;
+    function calculatePrice(
+        uint256 supply,
+        uint256 scale,
+        uint256 constant_a,
+        uint256 constant_b,
+        uint256 constant_c
+    ) internal pure returns (uint256) {
+        return
+            constant_a *
+            (supply ** 2) *
+            scale +
+            constant_b *
+            supply *
+            scale +
+            constant_c *
+            scale;
     }
 
     /// -----------------------------------------------------------------------
@@ -1028,7 +1148,14 @@ contract TokenCurveTest is Test {
         itemIds.push(1);
         itemIds.push(2);
         itemIds.push(3);
-        List memory list = List({owner: alice, title: TEST, detail: TEST, schema: BYTES, itemIds: itemIds, drip: 0});
+        List memory list = List({
+            owner: alice,
+            title: TEST,
+            detail: TEST,
+            schema: BYTES,
+            itemIds: itemIds,
+            drip: 0
+        });
 
         uint256 id = bulletin.listId();
         bulletin.registerList(list);

@@ -53,7 +53,8 @@ contract Deploy is Script {
     address tokenMinterAddr = address(0);
     address currencyAddr;
     address currencyAddr2;
-    address tokenBuilderAddr;
+    address tokenBuilderAddr =
+        address(0x51B4b8606e3c984A84de04379a0D91eb14dAF404);
 
     // Users.
     address account;
@@ -69,7 +70,8 @@ contract Deploy is Script {
     uint256 AUTHORIZED_TOKENS = 1 << 4;
     uint256 CROISSANT = 1 << 5;
     uint256 COFFEE = 1 << 6;
-    uint256 HELPERS = 1 << 7;
+    uint256 STAFF = 1 << 7;
+    uint256 HELPERS = 1 << 8;
 
     // Curves.
     Curve curve1;
@@ -93,7 +95,7 @@ contract Deploy is Script {
 
         vm.startBroadcast(privateKey);
 
-        deployCommons(account, user1, gasbot);
+        deployCommons(account, user1);
         // deployTokenBuilder();
 
         vm.stopBroadcast();
@@ -316,20 +318,20 @@ contract Deploy is Script {
 
         // Submit mock user input.
         ILog(loggerAddr).log(
-            MEMBERS,
+            CROISSANT,
             bulletinAddr,
             1,
             0,
             "So smooth!",
-            abi.encode(uint256(3), uint256(7), uint256(9))
+            abi.encode(uint256(1), uint256(7))
         );
         ILog(loggerAddr).log(
             MEMBERS,
             bulletinAddr,
             2,
             0,
-            "Wonderful service!",
-            BYTES
+            "Sold",
+            abi.encode(0.02 ether, 0.2 ether, 0.002 ether)
         );
 
         // Full stablecoin support.
@@ -370,13 +372,13 @@ contract Deploy is Script {
 
         // Patron log
         ILog(loggerAddr).logByToken(
-            MEMBERS,
+            CROISSANT,
             tokenMinterAddr,
             1,
             AUTHORIZED_TOKENS,
             0,
             "Flavorful!",
-            abi.encode(uint256(3), uint256(7), uint256(9))
+            abi.encode(uint256(1), uint256(7))
         );
     }
 
