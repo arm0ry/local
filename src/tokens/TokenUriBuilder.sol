@@ -455,7 +455,7 @@ contract TokenUriBuilder {
         return
             string.concat(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
-                buildTitle(shorten(user)),
+                buildTitle(string.concat("Helper ID ", shorten(user))),
                 buildHeader(list.title),
                 buildQaWithNumericalResponse(
                     "# of Pitchers Delivered",

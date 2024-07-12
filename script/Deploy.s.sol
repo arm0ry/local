@@ -134,6 +134,9 @@ contract Deploy is Script {
         deployLogger(false, patron);
         ILog(loggerAddr).grantRoles(gasbot, GASBOT);
         ILog(loggerAddr).grantRoles(patron, MEMBERS);
+        ILog(loggerAddr).grantRoles(user1, MEMBERS);
+        ILog(loggerAddr).grantRoles(user1, STAFF);
+        ILog(loggerAddr).grantRoles(user1, HELPERS);
 
         // Deploy bulletin contract and grant roles.
         deployBulletin(false, patron);
@@ -223,7 +226,7 @@ contract Deploy is Script {
                 logger: loggerAddr
             }),
             TokenBuilder({builder: tokenBuilderAddr, builderId: 4}),
-            TokenMarket({market: marketAddr, limit: 10})
+            TokenMarket({market: marketAddr, limit: 5})
         );
         uint256 tokenId4 = ITokenMinter(tokenMinterAddr).tokenId();
 
