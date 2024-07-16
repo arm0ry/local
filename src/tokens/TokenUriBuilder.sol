@@ -132,10 +132,7 @@ contract TokenUriBuilder {
         view
         returns (uint256 percentage, uint256 score, uint256 numOfCoffee)
     {
-        uint256 CROISSANT = 1 << 5;
-
         Touchpoint memory tp;
-
         uint256 didHaveFood;
         uint256 _score;
 
@@ -155,8 +152,9 @@ contract TokenUriBuilder {
                         i
                     );
 
+                    // Retrieve tp with CROISSANT (1 << 5) role only.
                     // Decode data and tally user response.
-                    if (tp.role == CROISSANT) {
+                    if (((tp.role >> 5) & 1) == 1) {
                         (didHaveFood, _score) = abi.decode(
                             tp.data,
                             (uint256, uint256)
@@ -168,11 +166,11 @@ contract TokenUriBuilder {
                             ++numOfCoffee;
                         }
                     }
-                }
 
-                unchecked {
-                    percentage = (percentage * 100) / nonce;
-                    score = score / nonce;
+                    unchecked {
+                        percentage = (percentage * 100) / numOfCoffee;
+                        score = score / numOfCoffee;
+                    }
                 }
             }
         }
@@ -257,8 +255,6 @@ contract TokenUriBuilder {
             uint256 numOfCoffee
         )
     {
-        uint256 COFFEE = 1 << 6;
-
         Touchpoint memory tp;
 
         uint256 _costOfCups;
@@ -281,8 +277,9 @@ contract TokenUriBuilder {
                         i
                     );
 
+                    // Retrieve tp with STAFF (1 << 7) role only.
                     // Decode data and tally user response.
-                    if (tp.role == COFFEE) {
+                    if (((tp.role >> 7) & 1) == 1) {
                         (_costOfCups, _costOfLabor, _costOfBenefits) = abi
                             .decode(tp.data, (uint256, uint256, uint256));
 
@@ -374,8 +371,6 @@ contract TokenUriBuilder {
             uint256 numOfPitchers
         )
     {
-        uint256 HELPERS = 1 << 8;
-
         Touchpoint memory tp;
 
         uint256 _costOfDelivery;
@@ -398,8 +393,9 @@ contract TokenUriBuilder {
                         i
                     );
 
+                    // Retrieve tp with STAFF (1 << 7) role only.
                     // Decode data and tally user response.
-                    if (tp.role == HELPERS) {
+                    if (((tp.role >> 7) & 1) == 1) {
                         (_costOfDelivery, _costOfLabor, _costOfRecycling) = abi
                             .decode(tp.data, (uint256, uint256, uint256));
 
@@ -490,16 +486,19 @@ contract TokenUriBuilder {
             uint256 length = tps.length;
 
             for (uint256 i; i < length; ++i) {
+                // Retrieve tp with STAFF (1 << 7) role only.
                 // Data retrieval condition.
-                if (tps[i].itemId == 5 && tps[i].pass) {
-                    unchecked {
-                        ++numOfDeliveries;
+                if (((tps[i].role >> 7) & 1) == 1) {
+                    if (tps[i].itemId == 5 && tps[i].pass) {
+                        unchecked {
+                            ++numOfDeliveries;
+                        }
                     }
-                }
 
-                if (tps[i].itemId == 6 && tps[i].pass) {
-                    unchecked {
-                        ++numOfRecyling;
+                    if (tps[i].itemId == 6 && tps[i].pass) {
+                        unchecked {
+                            ++numOfRecyling;
+                        }
                     }
                 }
             }
