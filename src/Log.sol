@@ -124,7 +124,7 @@ contract Log is OwnableRoles {
     /// Log Logic
     /// -----------------------------------------------------------------------
 
-    /// @notice Public logging.
+    /// @notice Permissioned logging.
     function log(
         uint256 role,
         address bulletin,
@@ -136,7 +136,7 @@ contract Log is OwnableRoles {
         _log(role, msg.sender, bulletin, listId, itemId, feedback, data);
     }
 
-    /// @notice Token ownership logging.
+    /// @notice Redemption logging.
     function logByToken(
         uint256 role,
         address token,

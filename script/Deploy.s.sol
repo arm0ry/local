@@ -47,14 +47,14 @@ contract Deploy is Script {
     address bulletinAddr = payable(address(0));
     address loggerAddr = address(0);
     address factoryAddr = address(0);
-    address payable marketAddr = payable(address(0));
+    address payable marketAddr =
+        payable(address(0x2BC74139e7f9989Aa0Acb0E4eFee81170ddaD1D0));
+    address tokenBuilderAddr = address(0);
 
     // Tokens.
     address tokenMinterAddr = address(0);
-    address currencyAddr;
-    address currencyAddr2;
-    address tokenBuilderAddr =
-        address(0x51B4b8606e3c984A84de04379a0D91eb14dAF404);
+    address currencyAddr = address(0xDE5A492E017b77e450cdaC119a70B402C004937c);
+    address currencyAddr2 = address(0x4Cf67c4EA25D45aB7B4eAe09a2cC316650D7E083);
 
     // Users.
     address account;
@@ -65,7 +65,6 @@ contract Deploy is Script {
 
     // Logger Roles.
     uint256 MEMBERS = 1 << 1;
-    uint256 REVIEWERS = 1 << 2;
     uint256 GASBOT = 1 << 3;
     uint256 AUTHORIZED_TOKENS = 1 << 4;
     uint256 CROISSANT = 1 << 5;
@@ -95,7 +94,10 @@ contract Deploy is Script {
 
         vm.startBroadcast(privateKey);
 
-        deployCommons(account, user1);
+        Currency(currencyAddr).mint(user1, 30 ether, marketAddr);
+        Currency(currencyAddr2).mint(user1, 30 ether, marketAddr);
+
+        // deployCommons(account, user1);
         // deployTokenBuilder();
 
         vm.stopBroadcast();
@@ -132,11 +134,10 @@ contract Deploy is Script {
     function deployCommons(address patron, address user) internal {
         // Deploy quest contract and set gasbot.
         deployLogger(false, patron);
-        ILog(loggerAddr).grantRoles(gasbot, GASBOT);
+        ILog(loggerAddr).grantRoles(patron, CROISSANT);
         ILog(loggerAddr).grantRoles(patron, MEMBERS);
         ILog(loggerAddr).grantRoles(user1, MEMBERS);
         ILog(loggerAddr).grantRoles(user1, STAFF);
-        ILog(loggerAddr).grantRoles(user1, HELPERS);
 
         // Deploy bulletin contract and grant roles.
         deployBulletin(false, patron);
@@ -169,7 +170,7 @@ contract Deploy is Script {
         ITokenMinter(tokenMinterAddr).registerMinter(
             TokenTitle({
                 name: "Coffee with $croissant",
-                desc: "For the $croissant community, we offer our coffee for 5 $croissant."
+                desc: "For the $croissant community, we offer our coffee for 5 $croissant. Redeem a cup of coffee with this token at our shop in Chiado, Portugal."
             }),
             TokenSource({
                 user: address(0),
@@ -185,7 +186,7 @@ contract Deploy is Script {
         ITokenMinter(tokenMinterAddr).registerMinter(
             TokenTitle({
                 name: "Coffee",
-                desc: "Giving back to the $coffee community, we take 3 $coffee for our labor and time ,and the rest in $stablecoins for our continued commitment in sourcing local beans and practicing sustainable waste practices."
+                desc: "Giving back to the $coffee community, we take 3 $coffee and some in $stablecoins for our continued commitment in sourcing local beans and practicing sustainable waste practices. You may redeem a cup of coffee with this token at our shop in Chiado, Portugal, or burn this token at a later date for some profit. It's like reselling early bird tickets. The choice is yours."
             }),
             TokenSource({
                 user: address(0),
@@ -201,7 +202,7 @@ contract Deploy is Script {
         ITokenMinter(tokenMinterAddr).registerMinter(
             TokenTitle({
                 name: "[Service] Deliver a Pitcher of Coffee", // Pay for delivery in $COFFEE via drop and receive service payments in $COFFEE via curve
-                desc: "We can deliver a pitch of cold brew locally for 10 $coffee to cover labor, and the rest in $stablecoin for our commitment to recycle pitchers and deliver with zero-emission."
+                desc: "We can deliver a pitcher of cold brew for 10 $coffee to cover labor, and some in $stablecoin for our commitment to reuse and deliver pitchers with zero-emission."
             }),
             TokenSource({
                 user: address(0),
@@ -217,7 +218,7 @@ contract Deploy is Script {
         ITokenMinter(tokenMinterAddr).registerMinter(
             TokenTitle({
                 name: "[Help Wanted] Deliver a Pitcher of Coffee",
-                desc: "Reserve a spot with 0.5 $coffee to help us deliver with zero-emission. Hop into our Discord for more delivery detail~"
+                desc: "Reserve a spot with 0.5 $coffee to help us deliver with zero-emission. Join our Discord for more delivery detail~"
             }),
             TokenSource({
                 user: user1,
@@ -226,7 +227,7 @@ contract Deploy is Script {
                 logger: loggerAddr
             }),
             TokenBuilder({builder: tokenBuilderAddr, builderId: 4}),
-            TokenMarket({market: marketAddr, limit: 5})
+            TokenMarket({market: marketAddr, limit: 3})
         );
         uint256 tokenId4 = ITokenMinter(tokenMinterAddr).tokenId();
 
@@ -302,7 +303,7 @@ contract Deploy is Script {
             currency: currencyAddr,
             scale: 0.01 ether,
             mint_a: 0,
-            mint_b: 5,
+            mint_b: 8,
             mint_c: 50,
             burn_a: 0,
             burn_b: 1,
@@ -313,11 +314,6 @@ contract Deploy is Script {
         // Update admin.
         // Need this only if deployer account is different from account operating the contract
         Bulletin(payable(bulletinAddr)).transferOwnership(user);
-
-        // Grant patron CROISSANT and COFFEE role.
-        ILog(loggerAddr).grantRoles(patron, COFFEE);
-        ILog(loggerAddr).grantRoles(patron, CROISSANT);
-        ILog(loggerAddr).grantRoles(patron, HELPERS);
 
         // Submit mock user input.
         ILog(loggerAddr).log(
@@ -502,7 +498,7 @@ contract Deploy is Script {
             expire: FUTURE,
             owner: user1,
             title: "Filtered Water",
-            detail: "",
+            detail: "https://hackmd.io/@audsssy/rJ__K2vEC",
             schema: BYTES,
             drip: 0
         });
@@ -510,8 +506,8 @@ contract Deploy is Script {
             review: false,
             expire: FUTURE,
             owner: user1,
-            title: "Compost Coffee Beans",
-            detail: "",
+            title: "Compost Coffee Grounds",
+            detail: "https://www.youtube.com/embed/z_rIUz17mR4",
             schema: BYTES,
             drip: 0
         });
@@ -538,7 +534,7 @@ contract Deploy is Script {
             expire: FUTURE,
             owner: user1,
             title: "Grab a Pitcher",
-            detail: "",
+            detail: "https://hackmd.io/@audsssy/r1PJocwEC",
             schema: BYTES,
             drip: 0
         });
@@ -547,7 +543,7 @@ contract Deploy is Script {
             expire: FUTURE,
             owner: user1,
             title: "Deliver to Recipient",
-            detail: "",
+            detail: "https://www.youtube.com/embed/gcUi_wA5UuI",
             schema: BYTES,
             drip: 0
         });
@@ -556,7 +552,7 @@ contract Deploy is Script {
             expire: FUTURE,
             owner: user1,
             title: "Recycle Pitcher",
-            detail: "",
+            detail: "https://www.youtube.com/embed/bCKNvoncsvk",
             schema: BYTES,
             drip: 0
         });

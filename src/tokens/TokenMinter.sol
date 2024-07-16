@@ -32,13 +32,13 @@ contract TokenMinter is ERC1155Batchless {
     /// -----------------------------------------------------------------------
 
     modifier onlyLogger(uint256 id) {
-        (,,, address logger) = getTokenSource(id);
+        (, , , address logger) = getTokenSource(id);
         if (logger == address(0) || msg.sender != logger) revert Unauthorized();
         _;
     }
 
     modifier onlyMarket(uint256 id) {
-        (address market,) = getTokenMarket(id);
+        (address market, ) = getTokenMarket(id);
         if (market == address(0) || msg.sender != market) revert Unauthorized();
         _;
     }
@@ -55,13 +55,26 @@ contract TokenMinter is ERC1155Batchless {
 
     function uri(uint256 id) public view override returns (string memory) {
         (address builder, uint256 builderId) = getTokenBuilder(id);
-        return TokenUriBuilder(builder).build(builderId, titles[id], sources[id]);
+        return
+            TokenUriBuilder(builder).build(builderId, titles[id], sources[id]);
     }
 
     function svg(uint256 id) public view returns (string memory) {
         (address builder, uint256 builderId) = getTokenBuilder(id);
-        (address user, address bulletin, uint256 listId, address logger) = getTokenSource(id);
-        return TokenUriBuilder(builder).generateSvg(builderId, user, bulletin, listId, logger);
+        (
+            address user,
+            address bulletin,
+            uint256 listId,
+            address logger
+        ) = getTokenSource(id);
+        return
+            TokenUriBuilder(builder).generateSvg(
+                builderId,
+                user,
+                bulletin,
+                listId,
+                logger
+            );
     }
 
     /// -----------------------------------------------------------------------
@@ -90,7 +103,10 @@ contract TokenMinter is ERC1155Batchless {
         owners[tokenId] = msg.sender;
     }
 
-    function updateMinter(uint256 id, TokenSource calldata source) external payable {
+    function updateMinter(
+        uint256 id,
+        TokenSource calldata source
+    ) external payable {
         List memory list = IBulletin(source.bulletin).getList(source.listId);
         if (msg.sender != list.owner) revert Unauthorized();
 
@@ -107,8 +123,8 @@ contract TokenMinter is ERC1155Batchless {
     }
 
     /// @notice Burn function limited to owner of token.
-    function burn(address from, uint256 id) external payable {
-        _burn(from, id, 1);
+    function burn(uint256 id) external payable {
+        _burn(msg.sender, id, 1);
     }
 
     /// -----------------------------------------------------------------------
@@ -116,12 +132,18 @@ contract TokenMinter is ERC1155Batchless {
     /// -----------------------------------------------------------------------
 
     /// @notice Mint function limited to logger.
-    function mintByLogger(address to, uint256 id) external payable onlyLogger(id) {
+    function mintByLogger(
+        address to,
+        uint256 id
+    ) external payable onlyLogger(id) {
         _mint(to, id, 1, "");
     }
 
     /// @notice Burn function limited to logger.
-    function burnByLogger(address from, uint256 id) external payable onlyLogger(id) {
+    function burnByLogger(
+        address from,
+        uint256 id
+    ) external payable onlyLogger(id) {
         _burn(from, id, 1);
     }
 
@@ -130,12 +152,18 @@ contract TokenMinter is ERC1155Batchless {
     /// -----------------------------------------------------------------------
 
     /// @notice Mint function limited to market registered by token owner.
-    function mintByMarket(address to, uint256 id) external payable onlyMarket(id) {
+    function mintByMarket(
+        address to,
+        uint256 id
+    ) external payable onlyMarket(id) {
         _mint(to, id, 1, "");
     }
 
     /// @notice Burn function limited to market registered by token owner.
-    function burnByMarket(address from, uint256 id) external payable onlyMarket(id) {
+    function burnByMarket(
+        address from,
+        uint256 id
+    ) external payable onlyMarket(id) {
         _burn(from, id, 1);
     }
 
@@ -147,17 +175,23 @@ contract TokenMinter is ERC1155Batchless {
         return owners[id];
     }
 
-    function getTokenTitle(uint256 id) public view returns (string memory, string memory) {
+    function getTokenTitle(
+        uint256 id
+    ) public view returns (string memory, string memory) {
         TokenTitle memory title = titles[id];
         return (title.name, title.desc);
     }
 
-    function getTokenBuilder(uint256 id) public view returns (address, uint256) {
+    function getTokenBuilder(
+        uint256 id
+    ) public view returns (address, uint256) {
         TokenBuilder memory builder = builders[id];
         return (builder.builder, builder.builderId);
     }
 
-    function getTokenSource(uint256 id) public view returns (address, address, uint256, address) {
+    function getTokenSource(
+        uint256 id
+    ) public view returns (address, address, uint256, address) {
         TokenSource memory source = sources[id];
         return (source.user, source.bulletin, source.listId, source.logger);
     }

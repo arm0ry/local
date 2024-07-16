@@ -201,6 +201,7 @@ contract TokenCurve {
 
     /// @notice Burn curve token to receive ether.
     function burn(
+        // TODO to replace msg.sender: address account,
         uint256 _curveId,
         address patron,
         uint256 tokenId
