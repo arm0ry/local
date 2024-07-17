@@ -59,7 +59,7 @@ contract TokenUriBuilder {
             return generateSvgForQsForPitcherDelivery(bulletin, listId, logger);
         } else if (builderId == 4) {
             // List user token.
-            return generateSvgForDeliveryRecord(user, bulletin, listId, logger);
+            return generateSvgForDeliveryRecord(bulletin, listId, logger);
         } else {
             return "";
         }
@@ -175,7 +175,7 @@ contract TokenUriBuilder {
     }
 
     /// -----------------------------------------------------------------------
-    /// SVG Template #2: Coffee with $COFFEE
+    /// SVG Template #2: Breakdown of Cost for Coffee with $COFFEE
     /// -----------------------------------------------------------------------
 
     function qsForCoffee(
@@ -277,7 +277,9 @@ contract TokenUriBuilder {
 
                     // Retrieve tp with STAFF (1 << 7) role only.
                     // Decode data and tally user response.
-                    if (((tp.role >> 7) & 1) == 1) {
+                    if (
+                        ((tp.role >> 7) & 1) == 1 && bytes(tp.data).length == 96
+                    ) {
                         (_costOfCups, _costOfLabor, _costOfBenefits) = abi
                             .decode(tp.data, (uint256, uint256, uint256));
 
@@ -294,7 +296,7 @@ contract TokenUriBuilder {
     }
 
     /// -----------------------------------------------------------------------
-    /// SVG Template #3: Customer Response for Pitcher Qs
+    /// SVG Template #3: Breakdown of Cost to Deliver Pitcher
     /// -----------------------------------------------------------------------
 
     function qsForPitcherDelivry(
@@ -410,7 +412,7 @@ contract TokenUriBuilder {
     }
 
     /// -----------------------------------------------------------------------
-    /// SVG Template #4: Helper's Track Record
+    /// SVG Template #4: Delivery Records by Staff
     /// -----------------------------------------------------------------------
 
     function deliveryRecord(
@@ -422,7 +424,6 @@ contract TokenUriBuilder {
                 title.name,
                 title.desc,
                 generateSvgForDeliveryRecord(
-                    source.user,
                     source.bulletin,
                     source.listId,
                     source.logger
@@ -431,7 +432,6 @@ contract TokenUriBuilder {
     }
 
     function generateSvgForDeliveryRecord(
-        address user,
         address bulletin,
         uint256 listId,
         address logger
@@ -441,15 +441,23 @@ contract TokenUriBuilder {
             ? list = IBulletin(bulletin).getList(listId)
             : list;
 
-        (
-            uint256 numOfDeliveries,
-            uint256 numOfRecyling
-        ) = getDeliveryTaskCompletions(bulletin, listId, user, logger);
+        uint256 numOfDeliveries = getTaskCompletionsbyStaff(
+            bulletin,
+            listId,
+            (list.itemIds.length > 0) ? list.itemIds[1] : 0,
+            logger
+        );
+        uint256 numOfReuse = getTaskCompletionsbyStaff(
+            bulletin,
+            listId,
+            (list.itemIds.length > 0) ? list.itemIds[2] : 0,
+            logger
+        );
 
         return
             string.concat(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" style="background:#FFFBF5">',
-                buildTitle(string.concat("Helper ID ", shorten(user))),
+                buildTitle("Chiado Coffee Shop"),
                 buildHeader(list.title),
                 buildQaWithNumericalResponse(
                     "# of Pitchers Delivered",
@@ -459,44 +467,43 @@ contract TokenUriBuilder {
                 ),
                 buildQaWithNumericalResponse(
                     "# of Pitchers Recycled",
-                    numOfRecyling,
+                    numOfReuse,
                     "",
                     190
                 ),
+                buildSignature(list.owner),
                 "</svg>"
             );
     }
 
-    function getDeliveryTaskCompletions(
+    function getTaskCompletionsbyStaff(
         address bulletin,
         uint256 listId,
-        address user,
+        uint256 itemId,
         address logger
-    ) public view returns (uint256 numOfDeliveries, uint256 numOfRecyling) {
+    ) public view returns (uint256 count) {
+        Touchpoint memory tp;
+
         if (logger != address(0)) {
-            uint256 logId = ILog(logger).lookupLogId(
-                user,
-                keccak256(abi.encodePacked(bulletin, listId))
+            uint256 nonce = ILog(logger).getNonceByItemId(
+                bulletin,
+                listId,
+                itemId
             );
 
-            Touchpoint[] memory tps = ILog(logger).getTouchpointsByLog(logId);
+            if (nonce > 0) {
+                for (uint256 i = 1; i <= nonce; ++i) {
+                    tp = ILog(logger).getTouchpointByItemIdByNonce(
+                        bulletin,
+                        listId,
+                        itemId,
+                        i
+                    );
 
-            uint256 length = tps.length;
-
-            for (uint256 i; i < length; ++i) {
-                // Retrieve tp with STAFF (1 << 7) role only.
-                // Data retrieval condition.
-                if (((tps[i].role >> 7) & 1) == 1) {
-                    if (tps[i].itemId == 5 && tps[i].pass) {
-                        unchecked {
-                            ++numOfDeliveries;
-                        }
-                    }
-
-                    if (tps[i].itemId == 6 && tps[i].pass) {
-                        unchecked {
-                            ++numOfRecyling;
-                        }
+                    // Retrieve tp with STAFF (1 << 7) role only.
+                    // Data retrieval condition.
+                    if (((tp.role >> 7) & 1) == 1) {
+                        ++count;
                     }
                 }
             }

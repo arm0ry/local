@@ -49,11 +49,11 @@ contract Deploy is Script {
     address loggerAddr = address(0xa666554DAc3012849680BFE85F338A28661F8cEC);
     address factoryAddr = address(0);
     address payable marketAddr = payable(address(0));
-    address tokenBuilderAddr =
-        address(0x0e86De2973f63D7aAC26a7033e0e8576A9C3577b);
+    address tokenBuilderAddr = address(0);
 
     // Tokens.
-    address tokenMinterAddr = address(0x39a37fa0399ABa243b9C127C96d369F2d4D8b915);
+    address tokenMinterAddr =
+        address(0x39a37fa0399ABa243b9C127C96d369F2d4D8b915);
     address currencyAddr = address(0);
     address currencyAddr2 = address(0);
 
@@ -96,7 +96,7 @@ contract Deploy is Script {
         vm.startBroadcast(privateKey);
 
         // deployCommons(account, user1);
-        // deployTokenBuilder();
+        deployTokenBuilder();
 
         ITokenMinter(tokenMinterAddr).updateMinter(
             1,
