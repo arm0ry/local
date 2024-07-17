@@ -44,17 +44,18 @@ contract Deploy is Script {
     bytes constant BYTES = bytes(string("BYTES"));
 
     // Contracts.
-    address bulletinAddr = payable(address(0));
-    address loggerAddr = address(0);
+    address bulletinAddr =
+        payable(address(0x1516eA29b019D43AbF06Ce9b28a8EbB1a8e0F429));
+    address loggerAddr = address(0xa666554DAc3012849680BFE85F338A28661F8cEC);
     address factoryAddr = address(0);
-    address payable marketAddr =
-        payable(address(0x2BC74139e7f9989Aa0Acb0E4eFee81170ddaD1D0));
-    address tokenBuilderAddr = address(0);
+    address payable marketAddr = payable(address(0));
+    address tokenBuilderAddr =
+        address(0x0e86De2973f63D7aAC26a7033e0e8576A9C3577b);
 
     // Tokens.
-    address tokenMinterAddr = address(0);
-    address currencyAddr = address(0xDE5A492E017b77e450cdaC119a70B402C004937c);
-    address currencyAddr2 = address(0x4Cf67c4EA25D45aB7B4eAe09a2cC316650D7E083);
+    address tokenMinterAddr = address(0x39a37fa0399ABa243b9C127C96d369F2d4D8b915);
+    address currencyAddr = address(0);
+    address currencyAddr2 = address(0);
 
     // Users.
     address account;
@@ -94,11 +95,49 @@ contract Deploy is Script {
 
         vm.startBroadcast(privateKey);
 
-        Currency(currencyAddr).mint(user1, 30 ether, marketAddr);
-        Currency(currencyAddr2).mint(user1, 30 ether, marketAddr);
-
         // deployCommons(account, user1);
         // deployTokenBuilder();
+
+        ITokenMinter(tokenMinterAddr).updateMinter(
+            1,
+            TokenSource({
+                user: address(0),
+                bulletin: bulletinAddr,
+                listId: 1,
+                logger: loggerAddr
+            }),
+            TokenBuilder({builder: tokenBuilderAddr, builderId: 1})
+        );
+        ITokenMinter(tokenMinterAddr).updateMinter(
+            2,
+            TokenSource({
+                user: address(0),
+                bulletin: bulletinAddr,
+                listId: 1,
+                logger: loggerAddr
+            }),
+            TokenBuilder({builder: tokenBuilderAddr, builderId: 2})
+        );
+        ITokenMinter(tokenMinterAddr).updateMinter(
+            3,
+            TokenSource({
+                user: address(0),
+                bulletin: bulletinAddr,
+                listId: 2,
+                logger: loggerAddr
+            }),
+            TokenBuilder({builder: tokenBuilderAddr, builderId: 3})
+        );
+        ITokenMinter(tokenMinterAddr).updateMinter(
+            4,
+            TokenSource({
+                user: address(0),
+                bulletin: bulletinAddr,
+                listId: 2,
+                logger: loggerAddr
+            }),
+            TokenBuilder({builder: tokenBuilderAddr, builderId: 4})
+        );
 
         vm.stopBroadcast();
     }
@@ -161,10 +200,12 @@ contract Deploy is Script {
         deployCurrency("Coffee", "COFFEE", patron);
         Currency(currencyAddr).mint(patron, 1000 ether, marketAddr);
         Currency(currencyAddr).mint(marketAddr, 10 ether, marketAddr);
+        Currency(currencyAddr).mint(user1, 50 ether, marketAddr);
 
         deployCurrency2("Croissant", "CROISSANT", patron);
         Currency(currencyAddr2).mint(patron, 1000 ether, marketAddr);
         Currency(currencyAddr2).mint(marketAddr, 10 ether, marketAddr);
+        Currency(currencyAddr2).mint(user1, 50 ether, marketAddr);
 
         // Configure token
         ITokenMinter(tokenMinterAddr).registerMinter(
@@ -322,7 +363,7 @@ contract Deploy is Script {
             1,
             0,
             "So smooth!",
-            abi.encode(uint256(1), uint256(7))
+            abi.encode(uint256(0), uint256(4))
         );
         ILog(loggerAddr).log(
             MEMBERS,
@@ -670,16 +711,6 @@ contract Deploy is Script {
             owner: user1,
             title: "6-panel",
             detail: "https://hackmd.io/@audsssy/HJC9SFvNA",
-            schema: BYTES,
-            drip: 0
-        });
-
-        Item memory item2 = Item({
-            review: false,
-            expire: FUTURE,
-            owner: user1,
-            title: "Chino Twill",
-            detail: "https://hackmd.io/@audsssy/r1PJocwEC",
             schema: BYTES,
             drip: 0
         });

@@ -160,17 +160,15 @@ contract TokenUriBuilder {
                             (uint256, uint256)
                         );
 
-                        unchecked {
-                            percentage += didHaveFood;
-                            score += _score;
-                            ++numOfCoffee;
-                        }
+                        (didHaveFood == 1) ? ++percentage : percentage;
+                        score += _score;
+                        ++numOfCoffee;
                     }
+                }
 
-                    unchecked {
-                        percentage = (percentage * 100) / numOfCoffee;
-                        score = score / numOfCoffee;
-                    }
+                if (numOfCoffee != 0) {
+                    percentage = (100 * percentage) / numOfCoffee;
+                    score = score / numOfCoffee;
                 }
             }
         }

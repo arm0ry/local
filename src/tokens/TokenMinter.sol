@@ -105,12 +105,14 @@ contract TokenMinter is ERC1155Batchless {
 
     function updateMinter(
         uint256 id,
-        TokenSource calldata source
+        TokenSource calldata source,
+        TokenBuilder calldata builder
     ) external payable {
         List memory list = IBulletin(source.bulletin).getList(source.listId);
         if (msg.sender != list.owner) revert Unauthorized();
 
         sources[id] = source;
+        builders[id] = builder;
     }
 
     /// -----------------------------------------------------------------------

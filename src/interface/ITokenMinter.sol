@@ -32,6 +32,11 @@ interface ITokenMinter {
         TokenBuilder calldata builder,
         TokenMarket calldata market
     ) external payable;
+    function updateMinter(
+        uint256 id,
+        TokenSource calldata source,
+        TokenBuilder calldata builder
+    ) external payable;
 
     function mint(address to, uint256 id) external payable;
     function burn(address from, uint256 id) external payable;
@@ -40,12 +45,23 @@ interface ITokenMinter {
     function mintByLogger(address to, uint256 id) external payable;
     function burnByLogger(address from, uint256 id) external payable;
 
-    function balanceOf(address _owner, uint256 _id) external view returns (uint256);
+    function balanceOf(
+        address _owner,
+        uint256 _id
+    ) external view returns (uint256);
     function uri(uint256 id) external view returns (string memory);
     function ownerOf(uint256 id) external view returns (address);
 
-    function getTokenTitle(uint256 id) external payable returns (string memory, string memory);
-    function getTokenBuilder(uint256 id) external payable returns (address, uint256);
-    function getTokenSource(uint256 id) external payable returns (address, address, uint256, address);
-    function getTokenMarket(uint256 id) external payable returns (address, uint256);
+    function getTokenTitle(
+        uint256 id
+    ) external payable returns (string memory, string memory);
+    function getTokenBuilder(
+        uint256 id
+    ) external payable returns (address, uint256);
+    function getTokenSource(
+        uint256 id
+    ) external payable returns (address, address, uint256, address);
+    function getTokenMarket(
+        uint256 id
+    ) external payable returns (address, uint256);
 }
