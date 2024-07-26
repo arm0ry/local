@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 struct TokenTitle {
     string name;
+    string symbol;
     string desc;
 }
 

@@ -170,7 +170,7 @@ contract Log is OwnableRoles {
 
         _log(role, msg.sender, bulletin, listId, itemId, feedback, data);
 
-        // TODO: Consider burn by token curve instead.
+        // Burn token without drawing burn payment.
         ITokenMinter(token).burnByLogger(msg.sender, tokenId);
     }
 

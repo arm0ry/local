@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.4;
 
-import {ERC1155Batchless} from "src/tokens/ERC1155Batchless.sol";
+import {ERC6909} from "lib/solady/src/tokens/ERC6909.sol";
 import {TokenUriBuilder} from "src/tokens/TokenUriBuilder.sol";
 import {IBulletin, List} from "src/interface/IBulletin.sol";
 import {ILog} from "src/interface/ILog.sol";
 import {ITokenMinter, TokenTitle, TokenSource, TokenBuilder, TokenMarket} from "src/interface/ITokenMinter.sol";
 import {OwnableRoles} from "src/auth/OwnableRoles.sol";
 
-// TODO: Consider adding vote delegation to ownership
 /// @title
 /// @notice SVG NFTs displaying impact results and metrics.
-contract TokenMinter is ERC1155Batchless {
+contract TokenMinter is ERC6909 {
     error InvalidConfig();
     error AlreadyConfigured();
     error Unauthorized();
@@ -25,6 +24,7 @@ contract TokenMinter is ERC1155Batchless {
     mapping(uint256 => TokenBuilder) public builders;
     mapping(uint256 => TokenSource) public sources;
     mapping(uint256 => TokenMarket) public markets;
+    mapping(uint256 => TokenDelegation) public delegations;
     mapping(uint256 => address) public owners;
 
     /// -----------------------------------------------------------------------
@@ -49,11 +49,20 @@ contract TokenMinter is ERC1155Batchless {
         _;
     }
 
+    function name(uint256 id) public view virtual returns (string memory) {
+        (string memory name, , ) = getTokenTitle(id);
+        return name;
+    }
+
+    function symbol(uint256 id) public view virtual returns (string memory) {
+        (, string memory symbol, ) = getTokenTitle(id);
+    }
+
     /// -----------------------------------------------------------------------
     /// Metadata Logic
     /// -----------------------------------------------------------------------
 
-    function uri(uint256 id) public view override returns (string memory) {
+    function tokenURI(uint256 id) public view override returns (string memory) {
         (address builder, uint256 builderId) = getTokenBuilder(id);
         return
             TokenUriBuilder(builder).build(builderId, titles[id], sources[id]);
