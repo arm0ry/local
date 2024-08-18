@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-struct TokenTitle {
+struct TokenMetadata {
     string name;
     string symbol;
     string desc;

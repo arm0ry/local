@@ -5,7 +5,7 @@ import {ERC6909} from "lib/solady/src/tokens/ERC6909.sol";
 import {TokenUriBuilder} from "src/tokens/TokenUriBuilder.sol";
 import {IBulletin, List} from "src/interface/IBulletin.sol";
 import {ILog} from "src/interface/ILog.sol";
-import {ITokenMinter, TokenTitle, TokenSource, TokenBuilder, TokenMarket} from "src/interface/ITokenMinter.sol";
+import {ITokenMinter, TokenMetatdata, TokenSource, TokenBuilder, TokenMarket} from "src/interface/ITokenMinter.sol";
 import {OwnableRoles} from "src/auth/OwnableRoles.sol";
 
 /// @title
@@ -20,7 +20,7 @@ contract TokenMinter is ERC6909 {
     /// -----------------------------------------------------------------------
 
     uint256 public tokenId;
-    mapping(uint256 => TokenTitle) public titles;
+    mapping(uint256 => TokenMetatdata) public titles;
     mapping(uint256 => TokenBuilder) public builders;
     mapping(uint256 => TokenSource) public sources;
     mapping(uint256 => TokenMarket) public markets;
@@ -49,15 +49,15 @@ contract TokenMinter is ERC6909 {
     }
 
     function name(uint256 id) public view override returns (string memory n) {
-        (n, , ) = getTokenTitle(id);
+        (n, , ) = getTokenMetatdata(id);
     }
 
     function symbol(uint256 id) public view override returns (string memory s) {
-        (, s, ) = getTokenTitle(id);
+        (, s, ) = getTokenMetatdata(id);
     }
 
     function desc(uint256 id) public view returns (string memory d) {
-        (, , d) = getTokenTitle(id);
+        (, , d) = getTokenMetatdata(id);
     }
 
     /// -----------------------------------------------------------------------
@@ -94,7 +94,7 @@ contract TokenMinter is ERC6909 {
 
     /// @notice Minter registration for list owners.
     function registerMinter(
-        TokenTitle calldata title,
+        TokenMetatdata calldata title,
         TokenSource calldata source,
         TokenBuilder calldata builder,
         TokenMarket calldata market
@@ -180,10 +180,10 @@ contract TokenMinter is ERC6909 {
         return owners[id];
     }
 
-    function getTokenTitle(
+    function getTokenMetatdata(
         uint256 id
     ) public view returns (string memory, string memory, string memory) {
-        TokenTitle memory title = titles[id];
+        TokenMetatdata memory title = titles[id];
         return (title.name, title.symbol, title.desc);
     }
 
