@@ -24,7 +24,6 @@ contract TokenMinter is ERC6909 {
     mapping(uint256 => TokenBuilder) public builders;
     mapping(uint256 => TokenSource) public sources;
     mapping(uint256 => TokenMarket) public markets;
-    mapping(uint256 => TokenDelegation) public delegations;
     mapping(uint256 => address) public owners;
 
     /// -----------------------------------------------------------------------
@@ -49,13 +48,16 @@ contract TokenMinter is ERC6909 {
         _;
     }
 
-    function name(uint256 id) public view virtual returns (string memory) {
-        (string memory name, , ) = getTokenTitle(id);
-        return name;
+    function name(uint256 id) public view override returns (string memory n) {
+        (n, , ) = getTokenTitle(id);
     }
 
-    function symbol(uint256 id) public view virtual returns (string memory) {
-        (, string memory symbol, ) = getTokenTitle(id);
+    function symbol(uint256 id) public view override returns (string memory s) {
+        (, s, ) = getTokenTitle(id);
+    }
+
+    function desc(uint256 id) public view returns (string memory d) {
+        (, , d) = getTokenTitle(id);
     }
 
     /// -----------------------------------------------------------------------
@@ -122,13 +124,8 @@ contract TokenMinter is ERC6909 {
     }
 
     /// -----------------------------------------------------------------------
-    /// Mint by owner of token id / Burn by owner of token id
+    /// Burn by anyone
     /// -----------------------------------------------------------------------
-
-    /// @notice Mint function limited to owner of token.
-    function mint(address to, uint256 id) external payable onlyTokenOwner(id) {
-        _mint(to, id, 1, "");
-    }
 
     /// @notice Burn function limited to owner of token.
     function burn(uint256 id) external payable {
@@ -144,7 +141,7 @@ contract TokenMinter is ERC6909 {
         address to,
         uint256 id
     ) external payable onlyLogger(id) {
-        _mint(to, id, 1, "");
+        _mint(to, id, 1);
     }
 
     /// @notice Burn function limited to logger.
@@ -164,7 +161,7 @@ contract TokenMinter is ERC6909 {
         address to,
         uint256 id
     ) external payable onlyMarket(id) {
-        _mint(to, id, 1, "");
+        _mint(to, id, 1);
     }
 
     /// @notice Burn function limited to market registered by token owner.
@@ -176,7 +173,7 @@ contract TokenMinter is ERC6909 {
     }
 
     /// -----------------------------------------------------------------------
-    /// Public getter Logic
+    /// Public getter
     /// -----------------------------------------------------------------------
 
     function ownerOf(uint256 id) public view returns (address) {
@@ -185,9 +182,9 @@ contract TokenMinter is ERC6909 {
 
     function getTokenTitle(
         uint256 id
-    ) public view returns (string memory, string memory) {
+    ) public view returns (string memory, string memory, string memory) {
         TokenTitle memory title = titles[id];
-        return (title.name, title.desc);
+        return (title.name, title.symbol, title.desc);
     }
 
     function getTokenBuilder(
