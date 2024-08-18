@@ -53,6 +53,7 @@ contract Log is OwnableRoles {
     // Mapping of touchpoints by encoded itemId data
     // keccak256(abi.encodePacked(bulletin, listId, itemId) => nonce for itemId
     mapping(bytes32 => uint256) nonceByItemId;
+
     // keccak256(abi.encodePacked(bulletin, listId, itemId) => nonce for itemId => Touchpoint
     mapping(bytes32 => mapping(uint256 => Touchpoint))
         public touchpointByItemId;
@@ -232,25 +233,21 @@ contract Log is OwnableRoles {
         });
 
         // Store touchpoint by logId.
-        if (id == 0) {
-            unchecked {
+        unchecked {
+            if (id == 0) {
                 lookupLogId[user][
                     keccak256(abi.encodePacked(bulletin, listId))
                 ] = ++logId;
-            }
 
-            logs[logId].user = user;
-            logs[logId].bulletin = bulletin;
-            logs[logId].listId = listId;
+                logs[logId].user = user;
+                logs[logId].bulletin = bulletin;
+                logs[logId].listId = listId;
 
-            logs[logId].touchpoints[logs[logId].nonce] = tp;
+                logs[logId].touchpoints[logs[logId].nonce] = tp;
 
-            unchecked {
                 ++logs[logId].nonce;
-            }
-        } else {
-            logs[id].touchpoints[logs[id].nonce] = tp;
-            unchecked {
+            } else {
+                logs[id].touchpoints[logs[id].nonce] = tp;
                 ++logs[id].nonce;
             }
         }
