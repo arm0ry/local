@@ -62,38 +62,38 @@ contract Log is OwnableRoles {
     /// Sign Storage
     /// -----------------------------------------------------------------------
 
-    uint256 internal INITIAL_CHAIN_ID;
-    bytes32 internal INITIAL_DOMAIN_SEPARATOR;
-    bytes32 public constant LOG_TYPEHASH =
-        keccak256(
-            "Log(address bulletin, uint256 listId, uint256 itemId, string feedback, bytes data)"
-        );
+    // uint256 internal INITIAL_CHAIN_ID;
+    // bytes32 internal INITIAL_DOMAIN_SEPARATOR;
+    // bytes32 public constant LOG_TYPEHASH =
+    //     keccak256(
+    //         "Log(address bulletin, uint256 listId, uint256 itemId, string feedback, bytes data)"
+    //     );
 
     /// -----------------------------------------------------------------------
     /// EIP-2612 LOGIC
     /// -----------------------------------------------------------------------
 
-    function DOMAIN_SEPARATOR() public view virtual returns (bytes32) {
-        return
-            block.chainid == INITIAL_CHAIN_ID
-                ? INITIAL_DOMAIN_SEPARATOR
-                : _computeDomainSeparator();
-    }
+    // function DOMAIN_SEPARATOR() public view virtual returns (bytes32) {
+    //     return
+    //         block.chainid == INITIAL_CHAIN_ID
+    //             ? INITIAL_DOMAIN_SEPARATOR
+    //             : _computeDomainSeparator();
+    // }
 
-    function _computeDomainSeparator() internal view virtual returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    keccak256(
-                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                    ),
-                    keccak256(bytes("Log")),
-                    keccak256("1"),
-                    block.chainid,
-                    address(this)
-                )
-            );
-    }
+    // function _computeDomainSeparator() internal view virtual returns (bytes32) {
+    //     return
+    //         keccak256(
+    //             abi.encode(
+    //                 keccak256(
+    //                     "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    //                 ),
+    //                 keccak256(bytes("Log")),
+    //                 keccak256("1"),
+    //                 block.chainid,
+    //                 address(this)
+    //             )
+    //         );
+    // }
 
     /// -----------------------------------------------------------------------
     /// Constructor & Modifier
