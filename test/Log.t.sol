@@ -214,8 +214,8 @@ contract LogTest is Test {
         // logItemBySponsorship(address(bulletin), listId, 2);
         logItem(alice, address(bulletin), listId, 1);
 
-        assertEq(bulletin.runsByItem(2), 2);
-        assertEq(bulletin.runsByItem(3), 1);
+        assertEq(bulletin.runsByItem(1), 2);
+        assertEq(bulletin.runsByItem(2), 1);
         // assertEq(bulletin.runsByList(listId), 1);
     }
 

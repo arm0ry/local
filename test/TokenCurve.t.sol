@@ -6,7 +6,7 @@ import "lib/forge-std/src/console2.sol";
 
 import {TokenCurve} from "src/TokenCurve.sol";
 import {ITokenCurve, CurveType, Curve, Collected} from "src/interface/ITokenCurve.sol";
-import {ITokenMinter, TokenTitle, TokenSource, TokenBuilder, TokenMarket} from "src/interface/ITokenMinter.sol";
+import {ITokenMinter, TokenMetadata, TokenSource, TokenBuilder, TokenMarket} from "src/interface/ITokenMinter.sol";
 import {TokenMinter} from "src/tokens/TokenMinter.sol";
 import {TokenUriBuilder} from "src/tokens/TokenUriBuilder.sol";
 import {Currency} from "src/tokens/Currency.sol";
@@ -418,8 +418,9 @@ contract TokenCurveTest is Test {
         vm.warp(block.timestamp + 100);
 
         // Set up token data.
-        TokenTitle memory title = TokenTitle({
+        TokenMetadata memory title = TokenMetadata({
             name: "Token1",
+            symbol: "Token1",
             desc: "Token Numba 1"
         });
         TokenSource memory source = TokenSource({
@@ -852,7 +853,7 @@ contract TokenCurveTest is Test {
         Collected memory collected = tc.getCollection(1);
         assertEq(address(tc).balance - collected.amountConverted, burnPrice);
 
-        emit log_string(tokenMinter.uri(1));
+        emit log_string(tokenMinter.tokenURI(1));
     }
 
     function testQuadCurve_burn(
@@ -911,8 +912,9 @@ contract TokenCurveTest is Test {
         tokenMinter = new TokenMinter();
 
         // Set up token data.
-        TokenTitle memory title = TokenTitle({
+        TokenMetadata memory title = TokenMetadata({
             name: "Token1",
+            symbol: "Token1",
             desc: "Token Numba 1"
         });
         TokenSource memory source = TokenSource({

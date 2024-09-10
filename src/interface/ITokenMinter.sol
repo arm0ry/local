@@ -28,7 +28,7 @@ struct TokenMarket {
 interface ITokenMinter {
     function tokenId() external returns (uint256);
     function registerMinter(
-        TokenTitle calldata title,
+        TokenMetadata calldata title,
         TokenSource calldata source,
         TokenBuilder calldata builder,
         TokenMarket calldata market
@@ -53,7 +53,7 @@ interface ITokenMinter {
     function uri(uint256 id) external view returns (string memory);
     function ownerOf(uint256 id) external view returns (address);
 
-    function getTokenTitle(
+    function getTokenMetadata(
         uint256 id
     ) external payable returns (string memory, string memory);
     function getTokenBuilder(

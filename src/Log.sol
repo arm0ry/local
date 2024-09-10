@@ -133,7 +133,7 @@ contract Log is OwnableRoles {
         uint256 itemId,
         string calldata feedback,
         bytes calldata data
-    ) external payable onlyRoles(role) checkList(bulletin, listId, itemId) {
+    ) external payable checkList(bulletin, listId, itemId) {
         _log(role, msg.sender, bulletin, listId, itemId, feedback, data);
     }
 

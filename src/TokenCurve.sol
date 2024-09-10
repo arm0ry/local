@@ -59,7 +59,7 @@ contract TokenCurve {
 
         if (curve.curveType == CurveType.LINEAR) {
             curves[curveId] = Curve({
-                owner: msg.sender,
+                owner: curve.owner,
                 token: curve.token,
                 id: curve.id,
                 supply: 0,
@@ -75,7 +75,7 @@ contract TokenCurve {
             });
         } else if (curve.curveType == CurveType.QUADRATIC) {
             curves[curveId] = Curve({
-                owner: msg.sender,
+                owner: curve.owner,
                 token: curve.token,
                 id: curve.id,
                 supply: 0,
@@ -106,7 +106,8 @@ contract TokenCurve {
         address patron,
         uint256 amountInCurrency
     ) external payable virtual {
-        if (amountInCurrency == 0) revert InsufficientCurrency();
+        // TODO: Is payment in currency necessary? Can patron pay in stablecoins only?
+        // if (amountInCurrency == 0) revert InsufficientCurrency();
 
         // Validate mint conditions.
         Curve memory curve = curves[_curveId];

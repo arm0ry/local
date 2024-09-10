@@ -6,7 +6,7 @@ import {JSON} from "src/utils/JSON.sol";
 import {ITokenCurve} from "src/interface/ITokenCurve.sol";
 import {IBulletin, List, Item} from "src/interface/IBulletin.sol";
 import {ILog, Activity, Touchpoint} from "src/interface/ILog.sol";
-import {ITokenMinter, TokenTitle, TokenSource, TokenBuilder} from "src/interface/ITokenMinter.sol";
+import {ITokenMinter, TokenMetadata, TokenSource, TokenBuilder} from "src/interface/ITokenMinter.sol";
 
 /// @title
 /// @notice
@@ -17,7 +17,7 @@ contract TokenUriBuilder {
 
     function build(
         uint256 builderId,
-        TokenTitle memory title,
+        TokenMetadata memory title,
         TokenSource memory source
     ) external view returns (string memory) {
         if (builderId == 1) {
@@ -70,7 +70,7 @@ contract TokenUriBuilder {
     /// -----------------------------------------------------------------------
 
     function qsForCroissant(
-        TokenTitle memory title,
+        TokenMetadata memory title,
         TokenSource memory source
     ) public view returns (string memory) {
         return
@@ -179,7 +179,7 @@ contract TokenUriBuilder {
     /// -----------------------------------------------------------------------
 
     function qsForCoffee(
-        TokenTitle memory title,
+        TokenMetadata memory title,
         TokenSource memory source
     ) public view returns (string memory) {
         return
@@ -300,7 +300,7 @@ contract TokenUriBuilder {
     /// -----------------------------------------------------------------------
 
     function qsForPitcherDelivry(
-        TokenTitle memory title,
+        TokenMetadata memory title,
         TokenSource memory source
     ) public view returns (string memory) {
         return
@@ -416,7 +416,7 @@ contract TokenUriBuilder {
     /// -----------------------------------------------------------------------
 
     function deliveryRecord(
-        TokenTitle memory title,
+        TokenMetadata memory title,
         TokenSource memory source
     ) public view returns (string memory) {
         return

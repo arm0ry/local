@@ -14,7 +14,7 @@ import {TokenCurve} from "src/TokenCurve.sol";
 
 import {ITokenCurve, Curve, CurveType} from "src/interface/ITokenCurve.sol";
 import {TokenMinter} from "src/tokens/TokenMinter.sol";
-import {ITokenMinter, TokenTitle, TokenBuilder, TokenSource, TokenMarket} from "src/interface/ITokenMinter.sol";
+import {ITokenMinter, TokenMetadata, TokenBuilder, TokenSource, TokenMarket} from "src/interface/ITokenMinter.sol";
 import {Currency} from "src/tokens/Currency.sol";
 import {TokenUriBuilder} from "src/tokens/TokenUriBuilder.sol";
 
@@ -44,9 +44,8 @@ contract Deploy is Script {
     bytes constant BYTES = bytes(string("BYTES"));
 
     // Contracts.
-    address bulletinAddr =
-        payable(address(0x1516eA29b019D43AbF06Ce9b28a8EbB1a8e0F429));
-    address loggerAddr = address(0xa666554DAc3012849680BFE85F338A28661F8cEC);
+    address bulletinAddr = payable(address(0));
+    address loggerAddr = address(0);
     address factoryAddr = address(0);
     address payable marketAddr = payable(address(0));
     address tokenBuilderAddr = address(0);
@@ -96,48 +95,7 @@ contract Deploy is Script {
         vm.startBroadcast(privateKey);
 
         // deployCommons(account, user1);
-        deployTokenBuilder();
-
-        ITokenMinter(tokenMinterAddr).updateMinter(
-            1,
-            TokenSource({
-                user: address(0),
-                bulletin: bulletinAddr,
-                listId: 1,
-                logger: loggerAddr
-            }),
-            TokenBuilder({builder: tokenBuilderAddr, builderId: 1})
-        );
-        ITokenMinter(tokenMinterAddr).updateMinter(
-            2,
-            TokenSource({
-                user: address(0),
-                bulletin: bulletinAddr,
-                listId: 1,
-                logger: loggerAddr
-            }),
-            TokenBuilder({builder: tokenBuilderAddr, builderId: 2})
-        );
-        ITokenMinter(tokenMinterAddr).updateMinter(
-            3,
-            TokenSource({
-                user: address(0),
-                bulletin: bulletinAddr,
-                listId: 2,
-                logger: loggerAddr
-            }),
-            TokenBuilder({builder: tokenBuilderAddr, builderId: 3})
-        );
-        ITokenMinter(tokenMinterAddr).updateMinter(
-            4,
-            TokenSource({
-                user: address(0),
-                bulletin: bulletinAddr,
-                listId: 2,
-                logger: loggerAddr
-            }),
-            TokenBuilder({builder: tokenBuilderAddr, builderId: 4})
-        );
+        deployGfel(account, user1);
 
         vm.stopBroadcast();
     }
@@ -168,6 +126,166 @@ contract Deploy is Script {
             patron,
             0.0001 ether
         );
+    }
+
+    function deployGfel(address patron, address user) internal {
+        // Deploy quest contract and set gasbot.
+        deployLogger(false, patron);
+
+        // Deploy bulletin contract and grant roles.
+        deployBulletin(false, patron);
+        IBulletin(bulletinAddr).grantRoles(
+            loggerAddr,
+            IBulletin(bulletinAddr).LOGGERS()
+        );
+
+        // Prepare lists.
+        registerCoffee();
+
+        // Deploy token minter and uri builder.
+        deployTokenMinter();
+        deployTokenBuilder();
+
+        // Deploy curve.
+        deployTokenCurve(patron);
+
+        // Deploy currency.
+        // deployCurrency("General Forum on Ethereum Localism", "GFEL", patron);
+        // Currency(currencyAddr).mint(patron, 1000 ether, marketAddr);
+        // Currency(currencyAddr).mint(marketAddr, 10 ether, marketAddr);
+        // Currency(currencyAddr).mint(user1, 50 ether, marketAddr);
+
+        // Configure token
+        ITokenMinter(tokenMinterAddr).registerMinter(
+            TokenMetadata({
+                name: "Coffee",
+                symbol: "$GFEL Coffee",
+                desc: "Coffee is free and we accept $3 donation per cup!"
+            }),
+            TokenSource({
+                user: address(0),
+                bulletin: bulletinAddr,
+                listId: 1,
+                logger: loggerAddr
+            }),
+            TokenBuilder({builder: tokenBuilderAddr, builderId: 1}),
+            TokenMarket({market: marketAddr, limit: 100})
+        );
+        uint256 tokenId = ITokenMinter(tokenMinterAddr).tokenId();
+
+        // Register curves.
+        curve1 = Curve({
+            owner: user,
+            token: tokenMinterAddr,
+            id: tokenId,
+            supply: 0,
+            curveType: CurveType.LINEAR,
+            currency: currencyAddr2,
+            scale: 0.001 ether,
+            mint_a: 0,
+            mint_b: 0,
+            mint_c: 3,
+            burn_a: 0,
+            burn_b: 0,
+            burn_c: 0
+        });
+        TokenCurve(marketAddr).registerCurve(curve1);
+
+        // Update admin.
+        // Need this only if deployer account is different from account operating the contract
+        Bulletin(payable(bulletinAddr)).transferOwnership(user);
+
+        // Submit mock user input.
+        ILog(loggerAddr).log(
+            CROISSANT, // TODO: log() in Log.sol does not check role, so any role works.
+            bulletinAddr,
+            1,
+            0,
+            "Smooooth!",
+            abi.encode(uint256(1), uint256(4))
+        );
+
+        ILog(loggerAddr).log(
+            CROISSANT, // TODO: log() in Log.sol does not check role, so any role works.
+            bulletinAddr,
+            1,
+            0,
+            "Smooooth!",
+            abi.encode(uint256(1), uint256(2))
+        );
+
+        ILog(loggerAddr).log(
+            CROISSANT, // TODO: log() in Log.sol does not check role, so any role works.
+            bulletinAddr,
+            1,
+            0,
+            "Smooooth!",
+            abi.encode(uint256(0), uint256(10))
+        );
+
+        ILog(loggerAddr).log(
+            CROISSANT, // TODO: log() in Log.sol does not check role, so any role works.
+            bulletinAddr,
+            1,
+            0,
+            "Smooooth!",
+            abi.encode(uint256(1), uint256(8))
+        );
+
+        ILog(loggerAddr).log(
+            CROISSANT, // TODO: log() in Log.sol does not check role, so any role works.
+            bulletinAddr,
+            1,
+            0,
+            "Smooooth!",
+            abi.encode(uint256(1), uint256(9))
+        );
+
+        // Full stablecoin support.
+        uint256 price = TokenCurve(marketAddr).getCurvePrice(true, 1, 0);
+        TokenCurve(marketAddr).support{value: price}(1, patron, 0);
+
+        price = TokenCurve(marketAddr).getCurvePrice(true, 1, 0);
+        TokenCurve(marketAddr).support{value: price}(1, patron, 0);
+
+        price = TokenCurve(marketAddr).getCurvePrice(true, 1, 0);
+        TokenCurve(marketAddr).support{value: price}(1, patron, 0);
+
+        price = TokenCurve(marketAddr).getCurvePrice(true, 1, 0);
+        TokenCurve(marketAddr).support{value: price}(1, patron, 0);
+
+        price = TokenCurve(marketAddr).getCurvePrice(true, 1, 0);
+        TokenCurve(marketAddr).support{value: price}(1, patron, 0);
+
+        price = TokenCurve(marketAddr).getCurvePrice(true, 1, 0);
+        TokenCurve(marketAddr).support{value: price}(1, patron, 0);
+
+        // Floor currency support.
+        // price = TokenCurve(marketAddr).getCurvePrice(true, 2, 0);
+        // TokenCurve(marketAddr).support{value: price - 3 ether}(
+        //     2,
+        //     patron,
+        //     3 ether
+        // );
+
+        // Grant AUTHORIZED_TOKENS role.
+        // ILog(loggerAddr).grantRoles(
+        //     address(
+        //         uint160(uint256(keccak256(abi.encode(tokenMinterAddr, 1))))
+        //     ),
+        //     AUTHORIZED_TOKENS
+        // );
+
+        // Patron log
+        // ILog(loggerAddr).logByToken(
+        //     CROISSANT,
+        //     tokenMinterAddr,
+        //     1,
+        //     AUTHORIZED_TOKENS,
+        //     0,
+        //     "Flavorful!",
+        //     abi.encode(uint256(1), uint256(7))
+        // );
     }
 
     function deployCommons(address patron, address user) internal {
@@ -209,8 +327,9 @@ contract Deploy is Script {
 
         // Configure token
         ITokenMinter(tokenMinterAddr).registerMinter(
-            TokenTitle({
+            TokenMetadata({
                 name: "Coffee with $croissant",
+                symbol: "Coffee with $croissant",
                 desc: "For the $croissant community, we offer our coffee for 5 $croissant. Redeem a cup of coffee with this token at our shop in Chiado, Portugal."
             }),
             TokenSource({
@@ -225,8 +344,9 @@ contract Deploy is Script {
         uint256 tokenId = ITokenMinter(tokenMinterAddr).tokenId();
 
         ITokenMinter(tokenMinterAddr).registerMinter(
-            TokenTitle({
+            TokenMetadata({
                 name: "Coffee",
+                symbol: "Coffee",
                 desc: "Giving back to the $coffee community, we take 3 $coffee and some in $stablecoins for our continued commitment in sourcing local beans and practicing sustainable waste practices. You may redeem a cup of coffee with this token at our shop in Chiado, Portugal, or burn this token at a later date for some profit. It's like reselling early bird tickets. The choice is yours."
             }),
             TokenSource({
@@ -241,8 +361,9 @@ contract Deploy is Script {
         uint256 tokenId2 = ITokenMinter(tokenMinterAddr).tokenId();
 
         ITokenMinter(tokenMinterAddr).registerMinter(
-            TokenTitle({
-                name: "[Service] Deliver a Pitcher of Coffee", // Pay for delivery in $COFFEE via drop and receive service payments in $COFFEE via curve
+            TokenMetadata({
+                name: "[Service] Deliver a Pitcher of Coffee",
+                symbol: "Deliver a Pitcher of Coffee",
                 desc: "We can deliver a pitcher of cold brew for 10 $coffee to cover labor, and some in $stablecoin for our commitment to reuse and deliver pitchers with zero-emission."
             }),
             TokenSource({
@@ -257,8 +378,9 @@ contract Deploy is Script {
         uint256 tokenId3 = ITokenMinter(tokenMinterAddr).tokenId();
 
         ITokenMinter(tokenMinterAddr).registerMinter(
-            TokenTitle({
+            TokenMetadata({
                 name: "[Help Wanted] Deliver a Pitcher of Coffee",
+                symbol: "Deliver a Pitcher of Coffee",
                 desc: "Reserve a spot with 0.5 $coffee to help us deliver with zero-emission. Join our Discord for more delivery detail~"
             }),
             TokenSource({
@@ -273,7 +395,7 @@ contract Deploy is Script {
         uint256 tokenId4 = ITokenMinter(tokenMinterAddr).tokenId();
 
         // ITokenMinter(tokenMinterAddr).registerMinter(
-        //     TokenTitle({
+        //     TokenMetadata({
         //         name: "[Harberger Sponsor] How to Make Espresso for Beginners",
         //         desc: "[WIP] Our espresso-making process is a one-of-a-kind artistic endeavor. If you want to know more, show your support and become a Harberger sponsor!"
         //     }),
@@ -422,6 +544,10 @@ contract Deploy is Script {
         );
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                              Deploy Contracts.                             */
+    /* -------------------------------------------------------------------------- */
+
     function deployBulletin(bool factory, address user) internal {
         delete bulletinAddr;
 
@@ -518,9 +644,9 @@ contract Deploy is Script {
         IBulletin(bulletinAddr).registerList(list);
     }
 
-    /// -----------------------------------------------------------------------
-    /// Register Lists
-    /// -----------------------------------------------------------------------
+    /* -------------------------------------------------------------------------- */
+    /*                                Custom Lists.                               */
+    /* -------------------------------------------------------------------------- */
 
     function registerCoffee() public {
         delete items;
