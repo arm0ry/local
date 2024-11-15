@@ -22,8 +22,10 @@ contract Bulletin is OwnableRoles {
     /// -----------------------------------------------------------------------
 
     /// @notice Role constants.
+    /// TODO: Consider designing from view of asset generator / bulletin owner
+    /// TODO: and how interaction with counterparties can accumulate immaterial value
     uint256 public constant LOGGERS = 1 << 0;
-    uint256 public constant STAFF = 1 << 1;
+    uint256 public constant STAFF = 1 << 1; // TODO: COUNTERPARTY
 
     /// @notice Bulletin storage.
     uint256 public fee;
@@ -49,15 +51,20 @@ contract Bulletin is OwnableRoles {
     /// Modifier
     /// -----------------------------------------------------------------------
 
+    // TODO: Combine two modifiers below
     modifier payFee(uint256 frequency) {
-        (bool success,) = owner().call{value: fee * frequency}("");
+        (bool success, ) = owner().call{value: fee * frequency}("");
         if (!success) revert TransferFailed();
         _;
     }
 
     modifier drop(uint256 frequency) {
         _;
-        ICurrency(currency).transferFrom(address(this), msg.sender, drip * frequency);
+        ICurrency(currency).transferFrom(
+            address(this),
+            msg.sender,
+            drip * frequency
+        );
     }
 
     /// -----------------------------------------------------------------------
@@ -76,7 +83,10 @@ contract Bulletin is OwnableRoles {
         fee = _fee;
     }
 
-    function setFaucet(address _currency, uint256 _drip) external payable onlyOwner {
+    function setFaucet(
+        address _currency,
+        uint256 _drip
+    ) external payable onlyOwner {
         currency = _currency;
         drip = _drip;
     }
@@ -85,7 +95,9 @@ contract Bulletin is OwnableRoles {
     /// Item Logic - Setter
     /// -----------------------------------------------------------------------
 
-    function contributeItem(Item calldata item) public payable onlyRoles(STAFF) drop(1) {
+    function contributeItem(
+        Item calldata item
+    ) public payable onlyRoles(STAFF) drop(1) {
         _registerItem(item);
     }
 
@@ -104,21 +116,28 @@ contract Bulletin is OwnableRoles {
         emit ItemUpdated(itemId, item);
     }
 
-    function contributeItems(Item[] calldata _items) public payable onlyRoles(STAFF) drop(_items.length) {
+    function contributeItems(
+        Item[] calldata _items
+    ) public payable onlyRoles(STAFF) drop(_items.length) {
         uint256 length = _items.length;
         for (uint256 i = 0; i < length; i++) {
             contributeItem(_items[i]);
         }
     }
 
-    function registerItems(Item[] calldata _items) external payable payFee(_items.length) {
+    function registerItems(
+        Item[] calldata _items
+    ) external payable payFee(_items.length) {
         uint256 length = _items.length;
         for (uint256 i = 0; i < length; i++) {
             registerItem(_items[i]);
         }
     }
 
-    function updateItem(uint256 id, Item calldata item) external payable onlyOwner {
+    function updateItem(
+        uint256 id,
+        Item calldata item
+    ) external payable onlyOwner {
         if (id > 0) {
             if (item.owner == address(0)) {
                 removeItem(id);
@@ -140,7 +159,9 @@ contract Bulletin is OwnableRoles {
     /// List Logic - Setter
     /// -----------------------------------------------------------------------
 
-    function contributeList(List calldata list) public payable onlyRoles(STAFF) drop(1) {
+    function contributeList(
+        List calldata list
+    ) public payable onlyRoles(STAFF) drop(1) {
         _registerList(list);
     }
 
@@ -165,7 +186,10 @@ contract Bulletin is OwnableRoles {
         emit ListUpdated(listId, list);
     }
 
-    function updateList(uint256 id, List calldata list) external payable onlyOwner {
+    function updateList(
+        uint256 id,
+        List calldata list
+    ) external payable onlyOwner {
         if (id > listId) revert InvalidList();
 
         // Clear out current list.
@@ -200,7 +224,10 @@ contract Bulletin is OwnableRoles {
     /// Log Logic - Setter
     /// -----------------------------------------------------------------------
 
-    function submit(uint256 _listId, uint256 _itemId) external onlyRoles(LOGGERS) {
+    function submit(
+        uint256 _listId,
+        uint256 _itemId
+    ) external onlyRoles(LOGGERS) {
         unchecked {
             (_itemId == 0) ? ++runsByList[_listId] : ++runsByItem[_itemId];
         }
@@ -223,7 +250,10 @@ contract Bulletin is OwnableRoles {
         else return false;
     }
 
-    function checkIsItemInList(uint256 _itemId, uint256 _listId) public view returns (bool) {
+    function checkIsItemInList(
+        uint256 _itemId,
+        uint256 _listId
+    ) public view returns (bool) {
         return isItemInList[_itemId][_listId];
     }
 

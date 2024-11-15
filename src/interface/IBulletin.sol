@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+struct Resource {
+    bool isActive; // The deadline of the item.
+    address owner;
+    string title;
+    string detail;
+}
+
+struct Ask {
+    address owner;
+    string title;
+    string detail;
+    bytes schema;
+    uint256 role;
+    uint256 drip;
+}
+
 /// @notice A struct representing the parameters of an item.
 struct Item {
     bool review; // Whether the item requires review to complete.
@@ -29,7 +45,10 @@ interface IBulletin {
     function initialize(address owner) external;
     function owner() external view returns (address);
     function grantRoles(address user, uint256 roles) external;
-    function hasAnyRole(address user, uint256 roles) external view returns (bool);
+    function hasAnyRole(
+        address user,
+        uint256 roles
+    ) external view returns (bool);
     function rolesOf(address user) external view returns (uint256 roles);
     function fee() external view returns (uint256);
 
@@ -49,7 +68,10 @@ interface IBulletin {
     function getListDrip(uint256 id) external view returns (uint256);
     function hasItemExpired(uint256 id) external view returns (bool);
     function hasListExpired(uint256 id) external view returns (bool);
-    function checkIsItemInList(uint256 itemId, uint256 listId) external view returns (bool);
+    function checkIsItemInList(
+        uint256 itemId,
+        uint256 listId
+    ) external view returns (bool);
 
     function submit(uint256 listId, uint256 itemId) external;
     function runsByItem(uint256 itemId) external view returns (uint256);

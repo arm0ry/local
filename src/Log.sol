@@ -8,7 +8,7 @@ import {ITokenMinter} from "src/interface/ITokenMinter.sol";
 import {OwnableRoles} from "src/auth/OwnableRoles.sol";
 
 /// @title Log
-/// @notice A database management system to log data from interacting with Bulletin.
+/// @notice A logging system for interacting with Bulletin.
 /// @author audsssy.eth
 contract Log is OwnableRoles {
     event Logged(
@@ -121,6 +121,25 @@ contract Log is OwnableRoles {
         _;
     }
 
+    modifier drip(
+        // address currency, // TODO: make it drip per bulletin completion reward
+        address user,
+        address bulletin,
+        uint256 listId,
+        uint256 itemId
+    ) {
+        _;
+        if (currency != address(0)) {
+            ICurrency(currency).transferFrom(
+                address(this),
+                user,
+                (itemId == 0)
+                    ? IBulletin(bulletin).getListDrip(listId)
+                    : IBulletin(bulletin).getItemDrip(itemId)
+            );
+        }
+    }
+
     /// -----------------------------------------------------------------------
     /// Log Logic
     /// -----------------------------------------------------------------------
@@ -173,6 +192,32 @@ contract Log is OwnableRoles {
 
         // Burn token without drawing burn payment.
         ITokenMinter(token).burnByLogger(msg.sender, tokenId);
+    }
+
+    /// @notice Reciprocal logging.
+    function logByReciprocity(
+        uint256 role,
+        address toBulletin,
+        uint256 toListId,
+        uint256 toItemId,
+        address fromBulletin,
+        uint256 fromListId,
+        uint256 fromItemId,
+        string calldata feedback,
+        bytes calldata data
+    ) external payable onlyRoles(role) {
+        _logByReciprocity(
+            role,
+            msg.sender,
+            toBulletin,
+            toListId,
+            toItemId,
+            fromBulletin,
+            fromListId,
+            fromItemId,
+            feedback,
+            data
+        );
     }
 
     /// @notice Permissionless logging by signature.
@@ -257,16 +302,14 @@ contract Log is OwnableRoles {
             ++nonceByItemId[
                 keccak256(abi.encodePacked(bulletin, listId, itemId))
             ];
-            touchpointByItemId[
-                keccak256(abi.encodePacked(bulletin, listId, itemId))
-            ][
-                nonceByItemId[
-                    keccak256(abi.encodePacked(bulletin, listId, itemId))
-                ]
-            ] = tp;
         }
+        touchpointByItemId[
+            keccak256(abi.encodePacked(bulletin, listId, itemId))
+        ][
+            nonceByItemId[keccak256(abi.encodePacked(bulletin, listId, itemId))]
+        ] = tp;
 
-        // Finally, log data
+        // Finally, log on `bulletin`.
         if (
             IBulletin(bulletin).hasAnyRole(
                 address(this),
@@ -286,6 +329,37 @@ contract Log is OwnableRoles {
             review,
             data
         );
+    }
+
+    function _logByReciprocity(
+        uint256 role,
+        address user,
+        address toBulletin,
+        uint256 toListId,
+        uint256 toItemId,
+        address fromBulletin,
+        uint256 fromListId,
+        uint256 fromItemId,
+        string calldata feedback,
+        bytes calldata data
+    ) internal {
+        uint256 id = lookupLogId[user][
+            keccak256(abi.encodePacked(toBulletin, toListId))
+        ];
+
+        // Check if review by reviewer is required.
+        Item memory item = IBulletin(toBulletin).getItem(toItemId);
+        bool review = (item.review) ? false : true;
+
+        // TODO: need a different touchpoint
+        // Set up touchpoint.
+        Touchpoint memory tp = Touchpoint({
+            role: role,
+            pass: review,
+            itemId: toItemId,
+            feedback: feedback,
+            data: data
+        });
     }
 
     /// -----------------------------------------------------------------------

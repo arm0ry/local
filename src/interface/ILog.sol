@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+struct Trade {
+    bool evaluated;
+    bytes32 ask;
+    bytes32 resource;
+    string feedback;
+    bytes data; // used to solicit responses, record externalities, etc.
+}
+
 struct Activity {
     address user;
     address bulletin;
