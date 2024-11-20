@@ -53,8 +53,8 @@ contract Bulletin is OwnableRoles, IBulletin {
     /*                                Constructor.                                */
     /* -------------------------------------------------------------------------- */
 
-    constructor() {
-        _initializeOwner(msg.sender);
+    constructor(address owner) {
+        _initializeOwner(owner);
     }
 
     /* -------------------------------------------------------------------------- */
@@ -95,10 +95,9 @@ contract Bulletin is OwnableRoles, IBulletin {
         _addResource(false, r);
     }
 
-    function addTrade(
-        uint256 id, /// target `askId`
-        Trade calldata t /// proposed `Trade`
-    ) external onlyRoles(r.role) {
+    /// target `askId`
+    /// proposed `Trade`
+    function addTrade(uint256 id, Trade calldata t) external {
         // Check if `Ask` is fulfilled.
         if (asks[id].fulfilled) revert InvalidTrade();
 
@@ -112,15 +111,13 @@ contract Bulletin is OwnableRoles, IBulletin {
             _tradeId = ++tradeIds[id];
         }
 
-        tradesByAsk[id][_tradeId].push(
-            Trade({
-                accepted: false,
-                timestamp: uint40(block.timestamp),
-                subject: t.subject,
-                feedback: t.feedback,
-                data: t.data
-            })
-        );
+        trades[id][_tradeId] = Trade({
+            accepted: false,
+            timestamp: uint40(block.timestamp),
+            subject: t.subject,
+            feedback: t.feedback,
+            data: t.data
+        });
     }
 
     function acceptTrade(uint256 _askId, uint256 tradeId) external {
@@ -145,7 +142,7 @@ contract Bulletin is OwnableRoles, IBulletin {
 
         asks[askId] = Ask({
             fulfilled: false,
-            role: isOwner ? _OWNER_SLOT : a.role,
+            role: isOwner ? uint40(uint256(_OWNER_SLOT)) : a.role,
             owner: isOwner ? owner() : a.owner,
             title: a.title,
             detail: a.detail,
@@ -160,7 +157,7 @@ contract Bulletin is OwnableRoles, IBulletin {
         }
 
         resources[askId] = Resource({
-            role: isOwner ? _OWNER_SLOT : r.role,
+            role: isOwner ? uint40(uint256(_OWNER_SLOT)) : r.role,
             expiry: r.expiry,
             owner: isOwner ? owner() : r.owner,
             title: r.title,
@@ -173,7 +170,7 @@ contract Bulletin is OwnableRoles, IBulletin {
         if (asks[id].owner != owner) revert InvalidOwner();
 
         // Check if `Ask` is fulfilled.
-        if (asks[_askId].fulfilled) revert InvalidTrade();
+        if (asks[id].fulfilled) revert InvalidTrade();
 
         // Accept trade.
         trades[id][tradeId].accepted = true;
@@ -186,11 +183,11 @@ contract Bulletin is OwnableRoles, IBulletin {
         uint16[] calldata percentages
     ) internal {
         // Throw when owners mismatch.
-        Ask memory a = asks[_askId];
+        Ask memory a = asks[id];
         if (a.owner != owner) revert InvalidOwner();
 
         // Tally and retrieve accepted trades.
-        (uint256 accepted, Trade[] memory trades) = tallAcceptedTrades(id);
+        (uint256 accepted, Trade[] memory t) = tallyAcceptedTrades(id);
 
         // Throw when percentages provide do not match number of accepted trades.
         if (accepted != percentages.length) revert InvalidSettlement();
@@ -199,7 +196,7 @@ contract Bulletin is OwnableRoles, IBulletin {
         Resource memory r;
         for (uint256 i; i < accepted; ++i) {
             (address sBulletin, uint256 sResourceId) = decodeSubject(
-                trades[i].subject
+                t[i].subject
             );
             r = IBulletin(sBulletin).getResource(sResourceId);
 
@@ -207,7 +204,7 @@ contract Bulletin is OwnableRoles, IBulletin {
                 a.currency,
                 address(this),
                 r.owner,
-                (a.drop * percentage[i]) / TEN_THOUSAND
+                (a.drop * percentages[i]) / TEN_THOUSAND
             );
         }
 
@@ -219,9 +216,13 @@ contract Bulletin is OwnableRoles, IBulletin {
     /*                                   Helper.                                  */
     /* -------------------------------------------------------------------------- */
 
+    function tallyAcceptedTrades(
+        uint256 id
+    ) public view returns (uint256 accepted, Trade[] memory t) {}
+
     function decodeSubject(
         bytes32 subject
-    ) external pure returns (address bulletin, uint256 id) {
+    ) public pure returns (address bulletin, uint256 id) {
         assembly {
             id := subject
             bulletin := shr(128, subject)

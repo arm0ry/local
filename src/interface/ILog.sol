@@ -2,9 +2,10 @@
 pragma solidity ^0.8.17;
 
 struct Trade {
-    bool evaluated;
-    bytes32 ask;
-    bytes32 resource;
+    bool accepted;
+    uint40 timestamp; // when trade is accepted
+    bytes32 ask; // assembly(bulletin, askId/resourceId)
+    bytes32 resource; // assembly(bulletin, askId/resourceId)
     string feedback;
     bytes data; // used to solicit responses, record externalities, etc.
 }
