@@ -1,288 +1,260 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.4;
 
-import {ICurrency} from "src/interface/ICurrency.sol";
-import {Item, List} from "src/interface/IBulletin.sol";
+import {IBulletin} from "src/interface/IBulletin.sol";
 import {OwnableRoles} from "src/auth/OwnableRoles.sol";
+import {SafeTransferLib} from "lib/solady/src/utils/SafeTransferLib.sol";
 
 /// @title List
 /// @notice A database management system to store lists of items.
 /// @author audsssy.eth
-contract Bulletin is OwnableRoles {
-    event ItemUpdated(uint256 id, Item item);
-    event ListUpdated(uint256 id, List list);
+contract Bulletin is OwnableRoles, IBulletin {
+    error InvalidOwner();
+    error InvalidTrade();
+    error InvalidSettlement();
+    error InvalidTotalPercentage();
 
-    error TransferFailed();
-    error NotAuthorized();
-    error InvalidItem();
-    error InvalidList();
+    /* -------------------------------------------------------------------------- */
+    /*                                 Constants.                                 */
+    /* -------------------------------------------------------------------------- */
 
-    /// -----------------------------------------------------------------------
-    /// Storage
-    /// -----------------------------------------------------------------------
+    /**
+     * @dev This is the denominator for calculating distribution.
+     */
+    uint16 private constant TEN_THOUSAND = 10_000;
 
-    /// @notice Role constants.
-    /// TODO: Consider designing from view of asset generator / bulletin owner
-    /// TODO: and how interaction with counterparties can accumulate immaterial value
-    uint256 public constant LOGGERS = 1 << 0;
-    uint256 public constant STAFF = 1 << 1; // TODO: COUNTERPARTY
+    /* -------------------------------------------------------------------------- */
+    /*                                  Storage.                                  */
+    /* -------------------------------------------------------------------------- */
 
-    /// @notice Bulletin storage.
-    uint256 public fee;
-    uint256 public itemId;
-    uint256 public listId;
-    mapping(uint256 => Item) public items;
-    mapping(uint256 => List) public lists;
+    uint40 askId;
+    uint40 resourceId;
+    mapping(uint256 => Ask) public asks;
+    mapping(uint256 => Resource) public resources;
 
-    /// @notice Currency faucet.
-    address public currency;
-    uint256 public drip;
+    mapping(uint256 => uint256) public tradeIds;
+    mapping(uint256 => mapping(uint256 => Trade)) public trades;
 
-    /// @dev itemId => listId => bool
-    mapping(uint256 => mapping(uint256 => bool)) public isItemInList;
+    /* -------------------------------------------------------------------------- */
+    /*                                 Modifiers.                                 */
+    /* -------------------------------------------------------------------------- */
 
-    /// @dev itemId => number of interactions produced
-    mapping(uint256 => uint256) public runsByItem;
-
-    /// @dev itemId => number of interactions produced
-    mapping(uint256 => uint256) public runsByList;
-
-    /// -----------------------------------------------------------------------
-    /// Modifier
-    /// -----------------------------------------------------------------------
-
-    // TODO: Combine two modifiers below
-    modifier payFee(uint256 frequency) {
-        (bool success, ) = owner().call{value: fee * frequency}("");
-        if (!success) revert TransferFailed();
+    modifier checkSum(uint16[] calldata p) {
+        // Throw when total percentage does not equal to TEN_THOUSAND.
+        uint256 totalPercentage;
+        for (uint256 i; i < p.length; ++i) {
+            totalPercentage += p[i];
+            if (totalPercentage != TEN_THOUSAND)
+                revert InvalidTotalPercentage();
+        }
         _;
     }
+    /* -------------------------------------------------------------------------- */
+    /*                                Constructor.                                */
+    /* -------------------------------------------------------------------------- */
 
-    modifier drop(uint256 frequency) {
-        _;
-        ICurrency(currency).transferFrom(
-            address(this),
-            msg.sender,
-            drip * frequency
+    constructor() {
+        _initializeOwner(msg.sender);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                                   Owner.                                   */
+    /* -------------------------------------------------------------------------- */
+
+    function addAskByOwner(Ask calldata a) external onlyOwner {
+        _addAsk(true, a);
+    }
+
+    function addResourceByOwner(Resource calldata r) external onlyOwner {
+        _addResource(true, r);
+    }
+
+    function acceptTradeByOwner(
+        uint256 _askId,
+        uint256 tradeId
+    ) external onlyOwner {
+        _acceptTrade(_askId, tradeId, owner());
+    }
+
+    function settleAskByOwner(
+        uint256 _askId,
+        uint16[] calldata percentages
+    ) public onlyOwner checkSum(percentages) {
+        _settleAsk(_askId, owner(), percentages);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                             Perimissioned Use.                             */
+    /* -------------------------------------------------------------------------- */
+
+    function addAsk(Ask calldata a) external onlyRoles(a.role) {
+        _addAsk(false, a);
+    }
+
+    function addResource(Resource calldata r) external onlyRoles(r.role) {
+        _addResource(false, r);
+    }
+
+    function addTrade(
+        uint256 id, /// target `askId`
+        Trade calldata t /// proposed `Trade`
+    ) external onlyRoles(r.role) {
+        // Check if `Ask` is fulfilled.
+        if (asks[id].fulfilled) revert InvalidTrade();
+
+        // Check if owner of `t.subject` is from `msg.sender`.
+        (address sBulletin, uint256 sResourceId) = decodeSubject(t.subject);
+        Resource memory r = IBulletin(sBulletin).getResource(sResourceId);
+        if (r.owner != msg.sender) revert InvalidOwner();
+
+        uint256 _tradeId;
+        unchecked {
+            _tradeId = ++tradeIds[id];
+        }
+
+        tradesByAsk[id][_tradeId].push(
+            Trade({
+                accepted: false,
+                timestamp: uint40(block.timestamp),
+                subject: t.subject,
+                feedback: t.feedback,
+                data: t.data
+            })
         );
     }
 
-    /// -----------------------------------------------------------------------
-    /// Constructor
-    /// -----------------------------------------------------------------------
-
-    function initialize(address owner) public {
-        _initializeOwner(owner);
+    function acceptTrade(uint256 _askId, uint256 tradeId) external {
+        _acceptTrade(_askId, tradeId, msg.sender);
     }
 
-    /// -----------------------------------------------------------------------
-    /// DAO Logic
-    /// ----------------------------------------------------------------------
-
-    function setFee(uint256 _fee) external payable onlyOwner {
-        fee = _fee;
+    function settleAsk(
+        uint256 _askId,
+        uint16[] calldata percentages
+    ) public checkSum(percentages) {
+        _settleAsk(_askId, msg.sender, percentages);
     }
 
-    function setFaucet(
-        address _currency,
-        uint256 _drip
-    ) external payable onlyOwner {
-        currency = _currency;
-        drip = _drip;
-    }
+    /* -------------------------------------------------------------------------- */
+    /*                                  Internal.                                 */
+    /* -------------------------------------------------------------------------- */
 
-    /// -----------------------------------------------------------------------
-    /// Item Logic - Setter
-    /// -----------------------------------------------------------------------
-
-    function contributeItem(
-        Item calldata item
-    ) public payable onlyRoles(STAFF) drop(1) {
-        _registerItem(item);
-    }
-
-    function registerItem(Item calldata item) public payable payFee(1) {
-        _registerItem(item);
-    }
-
-    function _registerItem(Item calldata item) internal {
-        if (item.owner == address(0)) revert InvalidItem();
-
+    function _addAsk(bool isOwner, Ask calldata a) internal {
         unchecked {
-            ++itemId;
+            ++askId;
         }
 
-        items[itemId] = item;
-        emit ItemUpdated(itemId, item);
+        asks[askId] = Ask({
+            fulfilled: false,
+            role: isOwner ? _OWNER_SLOT : a.role,
+            owner: isOwner ? owner() : a.owner,
+            title: a.title,
+            detail: a.detail,
+            currency: a.currency,
+            drop: a.drop
+        });
     }
 
-    function contributeItems(
-        Item[] calldata _items
-    ) public payable onlyRoles(STAFF) drop(_items.length) {
-        uint256 length = _items.length;
-        for (uint256 i = 0; i < length; i++) {
-            contributeItem(_items[i]);
+    function _addResource(bool isOwner, Resource calldata r) internal {
+        unchecked {
+            ++resourceId;
         }
+
+        resources[askId] = Resource({
+            role: isOwner ? _OWNER_SLOT : r.role,
+            expiry: r.expiry,
+            owner: isOwner ? owner() : r.owner,
+            title: r.title,
+            detail: r.detail
+        });
     }
 
-    function registerItems(
-        Item[] calldata _items
-    ) external payable payFee(_items.length) {
-        uint256 length = _items.length;
-        for (uint256 i = 0; i < length; i++) {
-            registerItem(_items[i]);
-        }
+    function _acceptTrade(uint256 id, uint256 tradeId, address owner) internal {
+        // Check resource ownership.
+        if (asks[id].owner != owner) revert InvalidOwner();
+
+        // Check if `Ask` is fulfilled.
+        if (asks[_askId].fulfilled) revert InvalidTrade();
+
+        // Accept trade.
+        trades[id][tradeId].accepted = true;
+        trades[id][tradeId].timestamp = uint40(block.timestamp);
     }
 
-    function updateItem(
+    function _settleAsk(
         uint256 id,
-        Item calldata item
-    ) external payable onlyOwner {
-        if (id > 0) {
-            if (item.owner == address(0)) {
-                removeItem(id);
-            } else {
-                items[id] = item;
-                emit ItemUpdated(itemId, item);
-            }
+        address owner,
+        uint16[] calldata percentages
+    ) internal {
+        // Throw when owners mismatch.
+        Ask memory a = asks[_askId];
+        if (a.owner != owner) revert InvalidOwner();
+
+        // Tally and retrieve accepted trades.
+        (uint256 accepted, Trade[] memory trades) = tallAcceptedTrades(id);
+
+        // Throw when percentages provide do not match number of accepted trades.
+        if (accepted != percentages.length) revert InvalidSettlement();
+
+        // Commence distribution.
+        Resource memory r;
+        for (uint256 i; i < accepted; ++i) {
+            (address sBulletin, uint256 sResourceId) = decodeSubject(
+                trades[i].subject
+            );
+            r = IBulletin(sBulletin).getResource(sResourceId);
+
+            route(
+                a.currency,
+                address(this),
+                r.owner,
+                (a.drop * percentage[i]) / TEN_THOUSAND
+            );
+        }
+
+        // Record settlement.
+        asks[id].fulfilled = true;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                                   Helper.                                  */
+    /* -------------------------------------------------------------------------- */
+
+    function decodeSubject(
+        bytes32 subject
+    ) external pure returns (address bulletin, uint256 id) {
+        assembly {
+            id := subject
+            bulletin := shr(128, subject)
+        }
+    }
+
+    function getAsk(uint256 id) external view returns (Ask memory a) {
+        return asks[id];
+    }
+
+    function getResource(uint256 id) external view returns (Resource memory r) {
+        return resources[id];
+    }
+
+    function getTrade(
+        uint256 id,
+        uint256 tradeId
+    ) external view returns (Trade memory t) {
+        return trades[id][tradeId];
+    }
+
+    /// @dev Helper function to route Ether and ERC20 tokens.
+    function route(
+        address currency,
+        address from,
+        address to,
+        uint256 amount
+    ) internal {
+        if (currency == address(0)) {
+            SafeTransferLib.safeTransferETH(to, amount);
         } else {
-            revert InvalidItem();
+            SafeTransferLib.safeTransferFrom(currency, from, to, amount);
         }
-    }
-
-    function removeItem(uint256 id) private {
-        delete items[id];
-        emit ItemUpdated(itemId, items[id]);
-    }
-
-    /// -----------------------------------------------------------------------
-    /// List Logic - Setter
-    /// -----------------------------------------------------------------------
-
-    function contributeList(
-        List calldata list
-    ) public payable onlyRoles(STAFF) drop(1) {
-        _registerList(list);
-    }
-
-    function registerList(List calldata list) public payable payFee(1) {
-        _registerList(list);
-    }
-
-    function _registerList(List calldata list) internal {
-        uint256 length = list.itemIds.length;
-        if (list.owner == address(0)) revert NotAuthorized();
-        if (length == 0) revert InvalidList();
-
-        unchecked {
-            ++listId;
-        }
-
-        for (uint256 i; i < length; ++i) {
-            isItemInList[list.itemIds[i]][listId] = true;
-        }
-
-        lists[listId] = list;
-        emit ListUpdated(listId, list);
-    }
-
-    function updateList(
-        uint256 id,
-        List calldata list
-    ) external payable onlyOwner {
-        if (id > listId) revert InvalidList();
-
-        // Clear out current list.
-        List memory _list = getList(id);
-        uint256 length = _list.itemIds.length;
-        for (uint256 i; i < length; ++i) {
-            delete isItemInList[_list.itemIds[i]][id];
-        }
-        delete lists[id];
-
-        // Update new list.
-        length = list.itemIds.length;
-        for (uint256 i; i < length; ++i) {
-            isItemInList[list.itemIds[i]][id] = true;
-        }
-        lists[id] = list;
-        emit ListUpdated(listId, list);
-    }
-
-    function removeList(uint256 id) external payable onlyOwner {
-        List memory _list = getList(id);
-        uint256 length = _list.itemIds.length;
-        for (uint256 i; i < length; ++i) {
-            delete isItemInList[_list.itemIds[i]][id];
-        }
-
-        delete lists[id];
-        emit ListUpdated(id, lists[id]);
-    }
-
-    /// -----------------------------------------------------------------------
-    /// Log Logic - Setter
-    /// -----------------------------------------------------------------------
-
-    function submit(
-        uint256 _listId,
-        uint256 _itemId
-    ) external onlyRoles(LOGGERS) {
-        unchecked {
-            (_itemId == 0) ? ++runsByList[_listId] : ++runsByItem[_itemId];
-        }
-    }
-
-    /// -----------------------------------------------------------------------
-    /// Item Logic - Getter
-    /// -----------------------------------------------------------------------
-
-    function getItem(uint256 id) external view returns (Item memory) {
-        return items[id];
-    }
-
-    function getItemDrip(uint256 id) external view returns (uint256) {
-        return items[id].drip;
-    }
-
-    function hasItemExpired(uint256 id) public view returns (bool) {
-        if (block.timestamp > items[id].expire) return true;
-        else return false;
-    }
-
-    function checkIsItemInList(
-        uint256 _itemId,
-        uint256 _listId
-    ) public view returns (bool) {
-        return isItemInList[_itemId][_listId];
-    }
-
-    /// -----------------------------------------------------------------------
-    /// List Logic - Getter
-    /// -----------------------------------------------------------------------
-
-    function getList(uint256 id) public view returns (List memory) {
-        return lists[id];
-    }
-
-    function getListDrip(uint256 id) external view returns (uint256) {
-        return lists[id].drip;
-    }
-
-    function hasListExpired(uint256 id) public view returns (bool) {
-        List memory list;
-        uint256 itemCount;
-        bool expired;
-
-        // @notice Count number of times completed per activity.
-        list = lists[id];
-        itemCount = list.itemIds.length;
-
-        for (uint256 i; i < itemCount; ++i) {
-            hasItemExpired(lists[id].itemIds[i]) ? expired = true : expired;
-        }
-
-        return expired;
     }
 
     receive() external payable virtual {}
