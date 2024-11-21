@@ -4,35 +4,14 @@ pragma solidity ^0.8.17;
 import {Script} from "lib/forge-std/src/Script.sol";
 import {console2} from "lib/forge-std/src/console2.sol";
 
-// import {ILog, Activity, Touchpoint} from "src/interface/ILog.sol";
+import {BulletinFactory} from "src/BulletinFactory.sol";
 import {Bulletin} from "src/Bulletin.sol";
-// import {IBulletin, List, Item} from "src/interface/IBulletin.sol";
-
-// // import {Factory} from "src/Factory.sol";
-// import {TokenCurve} from "src/TokenCurve.sol";
-
-// import {ITokenCurve, Curve, CurveType} from "src/interface/ITokenCurve.sol";
-// import {TokenMinter} from "src/tokens/TokenMinter.sol";
-// import {ITokenMinter, TokenMetadata, TokenBuilder, TokenSource, TokenMarket} from "src/interface/ITokenMinter.sol";
+import {IBulletin} from "src/interface/IBulletin.sol";
 import {Currency} from "src/tokens/Currency.sol";
-// import {TokenUriBuilder} from "src/tokens/TokenUriBuilder.sol";
 
 /// @notice A very simple deployment script
 contract Deploy is Script {
     // Events.
-    // event Tasks(
-    //     address[] _taskCreators,
-    //     uint256[] _taskDeadlines,
-    //     string[] _taskTitles,
-    //     string[] taskDetail,
-    //     uint256[] itemIds
-    // );
-    // event TaskArray(
-    //     address[] _taskCreators,
-    //     uint256[] _taskDeadlines,
-    //     string[] _taskTitles,
-    //     string[] taskDetail
-    // );
 
     // Errors.
     error Invalid();
@@ -41,17 +20,17 @@ contract Deploy is Script {
     uint256 constant PAST = 100000;
     uint40 constant FUTURE = 2527482181;
     bytes constant BYTES = bytes(string("BYTES"));
+    bytes32 constant TEST = "TEST";
 
     // Contracts.
-    address bulletinAddr = payable(address(0));
+    address payable bulletinAddr = payable(address(0));
     address loggerAddr = address(0);
     address factoryAddr = address(0);
     address payable marketAddr = payable(address(0));
     address tokenBuilderAddr = address(0);
 
     // Tokens.
-    address tokenMinterAddr =
-        address(0x39a37fa0399ABa243b9C127C96d369F2d4D8b915);
+    address tokenMinterAddr = address(0);
     address currencyAddr = address(0);
     address currencyAddr2 = address(0);
 
@@ -88,6 +67,88 @@ contract Deploy is Script {
 
         vm.stopBroadcast();
     }
+
+    /* -------------------------------------------------------------------------- */
+    /*                              Deploy Contracts.                             */
+    /* -------------------------------------------------------------------------- */
+
+    function deployBulletin(bool factory, address user) internal {
+        delete bulletinAddr;
+
+        if (factory) {
+            vm.prank(user);
+            BulletinFactory(factoryAddr).deployBulletin(TEST);
+            bulletinAddr = payable(
+                BulletinFactory(factoryAddr).determineBulletin(TEST)
+            );
+        } else {
+            bulletinAddr = payable(address(new Bulletin()));
+            Bulletin(bulletinAddr).init(user);
+        }
+    }
+
+    function deployCurrency(
+        string memory name,
+        string memory symbol,
+        address owner
+    ) internal {
+        delete currencyAddr;
+        currencyAddr = address(new Currency(name, symbol, owner));
+    }
+
+    // function deployCurrency2(
+    //     string memory name,
+    //     string memory symbol,
+    //     address owner
+    // ) internal {
+    //     delete currencyAddr2;
+    //     currencyAddr2 = address(new Currency(name, symbol, owner));
+    // }
+
+    // function support(
+    //     uint256 curveId,
+    //     address patron,
+    //     uint256 amountInCurrency
+    // ) internal {
+    //     uint256 price = TokenCurve(marketAddr).getCurvePrice(true, curveId, 0);
+    //     TokenCurve(marketAddr).support{value: price}(
+    //         curveId,
+    //         patron,
+    //         amountInCurrency
+    //     );
+    // }
+
+    // function registerList(
+    //     address user,
+    //     address bulletin,
+    //     Item[] memory _items,
+    //     string memory listTitle,
+    //     string memory listDetail,
+    //     uint256 drip
+    // ) internal {
+    //     delete itemIds;
+    //     uint256 itemId = IBulletin(bulletinAddr).itemId();
+
+    //     IBulletin(bulletinAddr).registerItems(_items);
+
+    //     for (uint256 i = 1; i <= _items.length; ++i) {
+    //         itemIds.push(itemId + i);
+    //     }
+
+    //     List memory list = List({
+    //         owner: user,
+    //         title: listTitle,
+    //         detail: listDetail,
+    //         schema: BYTES,
+    //         itemIds: itemIds,
+    //         drip: drip
+    //     });
+    //     IBulletin(bulletinAddr).registerList(list);
+    // }
+
+    /* -------------------------------------------------------------------------- */
+    /*                                    Old.                                    */
+    /* -------------------------------------------------------------------------- */
 
     // function deployGfel(address patron, address user) internal {
     //     // Deploy quest contract and set gasbot.
@@ -158,7 +219,7 @@ contract Deploy is Script {
 
     //     // Submit mock user input.
     //     ILog(loggerAddr).log(
-    //         CROISSANT, // TODO: log() in Log.sol does not check role, so any role works.
+    //         CROISSANT,
     //         bulletinAddr,
     //         1,
     //         0,
@@ -452,79 +513,6 @@ contract Deploy is Script {
     //         "Flavorful!",
     //         abi.encode(uint256(1), uint256(7))
     //     );
-    // }
-
-    /* -------------------------------------------------------------------------- */
-    /*                              Deploy Contracts.                             */
-    /* -------------------------------------------------------------------------- */
-
-    function deployBulletin(bool factory, address user) internal {
-        delete bulletinAddr;
-
-        if (factory) {
-            // bulletinAddr = Factory(factoryAddr).deployBulletin(user);
-        } else {
-            bulletinAddr = address(new Bulletin(user));
-        }
-    }
-
-    function deployCurrency(
-        string memory name,
-        string memory symbol,
-        address owner
-    ) internal {
-        delete currencyAddr;
-        currencyAddr = address(new Currency(name, symbol, owner));
-    }
-
-    // function deployCurrency2(
-    //     string memory name,
-    //     string memory symbol,
-    //     address owner
-    // ) internal {
-    //     delete currencyAddr2;
-    //     currencyAddr2 = address(new Currency(name, symbol, owner));
-    // }
-
-    // function support(
-    //     uint256 curveId,
-    //     address patron,
-    //     uint256 amountInCurrency
-    // ) internal {
-    //     uint256 price = TokenCurve(marketAddr).getCurvePrice(true, curveId, 0);
-    //     TokenCurve(marketAddr).support{value: price}(
-    //         curveId,
-    //         patron,
-    //         amountInCurrency
-    //     );
-    // }
-
-    // function registerList(
-    //     address user,
-    //     address bulletin,
-    //     Item[] memory _items,
-    //     string memory listTitle,
-    //     string memory listDetail,
-    //     uint256 drip
-    // ) internal {
-    //     delete itemIds;
-    //     uint256 itemId = IBulletin(bulletinAddr).itemId();
-
-    //     IBulletin(bulletinAddr).registerItems(_items);
-
-    //     for (uint256 i = 1; i <= _items.length; ++i) {
-    //         itemIds.push(itemId + i);
-    //     }
-
-    //     List memory list = List({
-    //         owner: user,
-    //         title: listTitle,
-    //         detail: listDetail,
-    //         schema: BYTES,
-    //         itemIds: itemIds,
-    //         drip: drip
-    //     });
-    //     IBulletin(bulletinAddr).registerList(list);
     // }
 
     /* -------------------------------------------------------------------------- */
