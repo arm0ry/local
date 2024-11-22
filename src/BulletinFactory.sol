@@ -16,13 +16,24 @@ contract BulletinFactory {
     /// Events
     /// -----------------------------------------------------------------------
 
-    event Deployed(address indexed bulletin, address indexed owner);
+    event Deployed(
+        uint256 indexed id,
+        address indexed bulletin,
+        address indexed owner
+    );
 
     /// -----------------------------------------------------------------------
     /// Immutables
     /// -----------------------------------------------------------------------
 
     address internal immutable bulletinTemplate;
+
+    /// -----------------------------------------------------------------------
+    /// Storage
+    /// -----------------------------------------------------------------------
+
+    uint256 public bulletinId;
+    mapping(uint256 => address) public bulletins;
 
     /// -----------------------------------------------------------------------
     /// Constructor
@@ -50,12 +61,20 @@ contract BulletinFactory {
     function deployBulletin(
         bytes32 name // create2 salt as used in `determineBulletin()`.
     ) public payable virtual {
+        // Determine bulletin address.
         address payable bulletin = payable(
             bulletinTemplate.cloneDeterministic(abi.encode(name), name)
         );
 
+        // Initialize `msg.sender` as bulletin owner.
         Bulletin(bulletin).init(msg.sender);
 
-        emit Deployed(bulletin, msg.sender);
+        // Store bulletin by bulletinId.
+        unchecked {
+            ++bulletinId;
+            bulletins[bulletinId] = bulletin;
+        }
+
+        emit Deployed(bulletinId, bulletin, msg.sender);
     }
 }
