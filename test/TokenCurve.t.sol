@@ -1112,9 +1112,9 @@ contract TokenCurveTest is Test {
     /// Bulletin Functions
     /// -----------------------------------------------------------------------
 
-    function deployBulletin(address user) public payable {
+    function deployBulletin(address owner) public payable {
         bulletin = new Bulletin();
-        bulletin.init(user);
-        assertEq(bulletin.owner(), user);
+        bulletin.init(owner);
+        assertEq(bulletin.owner(), owner);
     }
 }

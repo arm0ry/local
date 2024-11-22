@@ -13,22 +13,28 @@ contract Bulletin is OwnableRoles, IBulletin {
     /*                                 Constants.                                 */
     /* -------------------------------------------------------------------------- */
 
-    /**
-     * @dev This is the denominator for calculating distribution.
-     */
+    /// The denominator for calculating distribution.
     uint16 private constant TEN_THOUSAND = 10_000;
+
+    /// The permissioned role to call `incrementUsage()`.
+    uint256 private constant BULLETIN_ROLE = 1 << 0;
 
     /* -------------------------------------------------------------------------- */
     /*                                  Storage.                                  */
     /* -------------------------------------------------------------------------- */
 
-    uint40 askId;
-    uint40 resourceId;
-    mapping(uint256 => Ask) public asks;
-    mapping(uint256 => Resource) public resources;
+    uint40 public askId;
+    uint40 public resourceId;
 
+    // Mappings by `askId`.
+    mapping(uint256 => Ask) public asks;
     mapping(uint256 => uint256) public tradeIds;
-    mapping(uint256 => mapping(uint256 => Trade)) public trades;
+    mapping(uint256 => mapping(uint256 => Trade)) public trades; // Reciprocal events.
+
+    // Mappings by `resourceId`.
+    mapping(uint256 => Resource) public resources;
+    mapping(uint256 => uint256) public usageIds;
+    mapping(uint256 => mapping(uint256 => Usage)) public usages; // Reciprocal events.
 
     /* -------------------------------------------------------------------------- */
     /*                                 Modifiers.                                 */
@@ -100,7 +106,16 @@ contract Bulletin is OwnableRoles, IBulletin {
         if (asks[id].fulfilled) revert InvalidTrade();
 
         // Check if owner of `t.resource` is from `msg.sender`.
-        if (getResourceOwner(t.resource) != msg.sender) revert InvalidOwner();
+        (address _bulletin, uint256 _resourceId) = decodeAsset(t.resource);
+        Resource memory resource = IBulletin(_bulletin).getResource(
+            _resourceId
+        );
+        if (resource.owner != msg.sender) revert InvalidOwner();
+
+        // TODO: would below throw bc msg.sender is not owner ?
+        // Grant this Bulletin a `BULLETIN_ROLE` in contributing bulletin.
+        // This allows accepted trades to record usages in contributing bulletin.
+        Bulletin(payable(_bulletin)).grantRoles(address(this), BULLETIN_ROLE);
 
         uint256 _tradeId;
         unchecked {
@@ -125,8 +140,42 @@ contract Bulletin is OwnableRoles, IBulletin {
     function settleAsk(
         uint256 _askId,
         uint16[] calldata percentages
-    ) public checkSum(percentages) {
+    ) external checkSum(percentages) {
         _settleAsk(_askId, msg.sender, percentages);
+    }
+
+    // Only other Bulletins can access
+    function incrementUsage(
+        uint256 role,
+        uint256 _resourceId,
+        bytes32 ask
+    ) public onlyRoles(role) {
+        unchecked {
+            usages[_resourceId][++usageIds[_resourceId]] = Usage({
+                ask: ask,
+                timestamp: uint40(block.timestamp),
+                feedback: "",
+                data: abi.encode(0)
+            });
+        }
+    }
+
+    // Users benefited from Resource can comment.
+    function comment(
+        uint256 _resourceId,
+        uint256 _usageId,
+        string calldata feedback,
+        bytes calldata data
+    ) public {
+        // Check if user is owner of `Ask`.
+        (address _bulletin, uint256 _askId) = decodeAsset(
+            usages[_resourceId][_usageId].ask
+        );
+        Ask memory ask = IBulletin(_bulletin).getAsk(_askId);
+        if (ask.owner != msg.sender) revert CannotComment();
+
+        usages[_resourceId][_usageId].feedback = feedback;
+        usages[_resourceId][_usageId].data = data;
     }
 
     /* -------------------------------------------------------------------------- */
@@ -134,10 +183,15 @@ contract Bulletin is OwnableRoles, IBulletin {
     /* -------------------------------------------------------------------------- */
 
     function _addAsk(bool isOwner, Ask calldata a) internal {
+        // Increment ask id.
         unchecked {
             ++askId;
         }
 
+        // Transfer currency drop to address(this).
+        route(a.currency, msg.sender, address(this), a.drop);
+
+        // Store ask.
         asks[askId] = Ask({
             fulfilled: false,
             role: isOwner ? uint40(uint256(_OWNER_SLOT)) : a.role,
@@ -167,38 +221,46 @@ contract Bulletin is OwnableRoles, IBulletin {
         emit ResourceAdded(resourceId);
     }
 
-    function _acceptTrade(uint256 id, uint256 tradeId, address owner) internal {
+    function _acceptTrade(
+        uint256 _askId,
+        uint256 tradeId,
+        address owner
+    ) internal {
         // Check resource ownership.
-        if (asks[id].owner != owner) revert InvalidOwner();
+        if (asks[_askId].owner != owner) revert InvalidOwner();
 
         // Check if `Ask` is fulfilled.
-        if (asks[id].fulfilled) revert InvalidTrade();
+        if (asks[_askId].fulfilled) revert InvalidTrade();
 
         // Accept trade.
-        trades[id][tradeId].accepted = true;
-        trades[id][tradeId].timestamp = uint40(block.timestamp);
+        trades[_askId][tradeId].accepted = true;
+        trades[_askId][tradeId].timestamp = uint40(block.timestamp);
 
-        emit TradeAccepted(id);
+        // Record resource usage.
+        Trade memory _trade = trades[_askId][tradeId];
+        (address _bulletin, uint256 _resourceId) = decodeAsset(_trade.resource);
+
+        emit TradeAccepted(_askId);
     }
 
     function _settleAsk(
-        uint256 id,
+        uint256 _askId,
         address owner,
         uint16[] calldata percentages
     ) internal {
         // Throw when owners mismatch.
-        Ask memory a = asks[id];
+        Ask memory a = asks[_askId];
         if (a.owner != owner) revert InvalidOwner();
 
         // Tally and retrieve accepted trades.
-        Trade[] memory _trades = filterTrades(id, bytes32("accepted"), 0);
+        Trade[] memory _trades = filterTrades(_askId, bytes32("accepted"), 0);
         uint256 length = _trades.length;
 
         // Throw when number of percentages does not match number of accepted trades.
         if (length != percentages.length) revert TradeSettlementMismatch();
 
-        // Commence distribution.
-        Resource memory r;
+        address _bulletin;
+        uint256 _resourceId;
         for (uint256 i; i < length; ++i) {
             // Pay resource owner.
             route(
@@ -207,16 +269,31 @@ contract Bulletin is OwnableRoles, IBulletin {
                 getResourceOwner(_trades[i].resource),
                 (a.drop * percentages[i]) / TEN_THOUSAND
             );
+
+            // Reciprocity.
+            (_bulletin, _resourceId) = decodeAsset(_trades[i].resource);
+            if (
+                Bulletin(payable(_bulletin)).hasAnyRole(
+                    address(this),
+                    BULLETIN_ROLE
+                )
+            ) {
+                IBulletin(payable(_bulletin)).incrementUsage(
+                    BULLETIN_ROLE,
+                    _resourceId,
+                    encodeAsset(address(this), _askId)
+                );
+            }
         }
 
         // Mark ask as fulfilled.
-        asks[id].fulfilled = true;
+        asks[_askId].fulfilled = true;
 
-        emit AskSettled(id, length);
+        emit AskSettled(_askId, length);
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                                   Helper.                                  */
+    /*                                  Helpers.                                  */
     /* -------------------------------------------------------------------------- */
 
     function filterTrades(
@@ -226,13 +303,15 @@ contract Bulletin is OwnableRoles, IBulletin {
     ) public view returns (Trade[] memory _trades) {
         // Declare for use.
         Trade memory t;
+
+        // Filter keys.
         bytes32 accepted = "accepted";
         bytes32 timestamp = "timestamp";
 
-        // Retrieve trade id.
+        // Retrieve trade id, or number of trades.
         uint256 tId = tradeIds[id];
 
-        // If trade exists, filter and return trades based on provided `key`.
+        // If trades exist, filter and return trades based on provided `key`.
         if (tId > 0) {
             for (uint256 i = 1; i <= tId; ++i) {
                 // Retrieve trade.
@@ -249,6 +328,28 @@ contract Bulletin is OwnableRoles, IBulletin {
         }
     }
 
+    // Encode bulletin address and ask/resource id as asset.
+    function encodeAsset(
+        address bulletin,
+        uint256 id
+    ) public pure returns (bytes32 asset) {
+        asset = bytes32(abi.encodePacked(bulletin, id));
+    }
+
+    // Decode asset as bulletin address and ask/resource id.
+    function decodeAsset(
+        bytes32 asset
+    ) public pure returns (address bulletin, uint256 id) {
+        assembly {
+            id := asset
+            bulletin := shr(128, asset)
+        }
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                              Internal Helpers.                             */
+    /* -------------------------------------------------------------------------- */
+
     /// @dev Helper function to route Ether and ERC20 tokens.
     function route(
         address currency,
@@ -260,23 +361,6 @@ contract Bulletin is OwnableRoles, IBulletin {
             SafeTransferLib.safeTransferETH(to, amount);
         } else {
             SafeTransferLib.safeTransferFrom(currency, from, to, amount);
-        }
-    }
-
-    // Encode.
-    function encodeResource(
-        address _bulletin,
-        uint256 _resourceId
-    ) public pure returns (bytes32 resource) {
-        resource = bytes32(abi.encodePacked(_bulletin, _resourceId));
-    }
-
-    function decodeResource(
-        bytes32 resource
-    ) public pure returns (address _bulletin, uint256 _resourceId) {
-        assembly {
-            _resourceId := resource
-            _bulletin := shr(128, resource)
         }
     }
 
@@ -292,10 +376,17 @@ contract Bulletin is OwnableRoles, IBulletin {
         return resources[id];
     }
 
+    function getResource(
+        bytes32 resource
+    ) public view returns (Resource memory r) {
+        (address _bulletin, uint256 _resourceId) = decodeAsset(resource);
+        r = IBulletin(_bulletin).getResource(_resourceId);
+    }
+
     function getResourceOwner(
         bytes32 resource
     ) public view returns (address owner) {
-        (address _bulletin, uint256 _resourceId) = decodeResource(resource);
+        (address _bulletin, uint256 _resourceId) = decodeAsset(resource);
         Resource memory r = IBulletin(_bulletin).getResource(_resourceId);
         owner = r.owner;
     }
