@@ -24,14 +24,20 @@ contract BulletinFactoryTest is Test {
     bytes32 TEST = "TEST";
 
     function setUp() public payable {
-        // Create the templates.
         bulletin = new Bulletin();
-        // Create the factory.
         factory = new BulletinFactory(address(bulletin));
     }
 
     function testDeploy() public payable {
-        factory.deployBulletin(TEST);
+        uint256 id = factory.bulletinId();
+        vm.prank(alice);
+        address deployed = factory.deployBulletin(TEST);
+        uint256 id_ = factory.bulletinId();
+        address deployed_ = factory.bulletins(id_);
+        bulletin = Bulletin(payable(deployed_));
+        assertEq(id + 1, id_);
+        assertEq(deployed_, deployed);
+        assertEq(bulletin.owner(), alice);
     }
 
     function testDetermination() public payable {

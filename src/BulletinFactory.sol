@@ -60,7 +60,7 @@ contract BulletinFactory {
 
     function deployBulletin(
         bytes32 name // create2 salt as used in `determineBulletin()`.
-    ) public payable virtual {
+    ) public payable virtual returns (address) {
         // Determine bulletin address.
         address payable bulletin = payable(
             bulletinTemplate.cloneDeterministic(abi.encode(name), name)
@@ -76,5 +76,7 @@ contract BulletinFactory {
         }
 
         emit Deployed(bulletinId, bulletin, msg.sender);
+
+        return bulletin;
     }
 }
