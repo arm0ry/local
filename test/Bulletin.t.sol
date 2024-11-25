@@ -23,6 +23,12 @@ contract BulletinTest is Test {
     address immutable charlie = makeAddr("charlie");
     address immutable owner = makeAddr("owner");
 
+    /// @dev Roles.
+    bytes32 internal constant _OWNER_SLOT =
+        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff74873927;
+    uint40 public constant BULLETIN_ROLE = 1 << 1;
+    uint40 public constant PERMISSIONED_USER = 2 << 1;
+
     /// @dev Mock Data.
     uint40 constant PAST = 100000;
     uint40 constant FUTURE = 2527482181;
@@ -41,6 +47,7 @@ contract BulletinTest is Test {
         deployBulletin(owner);
 
         mock = new MockERC20(TEST, TEST, 18);
+        mock.mint(owner, 100 ether);
     }
 
     function testReceiveETH() public payable {
@@ -54,8 +61,17 @@ contract BulletinTest is Test {
         assertEq(bulletin.owner(), user);
     }
 
+    function approve(
+        address approver,
+        address spender,
+        uint256 amount
+    ) public payable {
+        vm.prank(approver);
+        mock.approve(address(bulletin), 100 ether);
+    }
+
     /// -----------------------------------------------------------------------
-    /// DAO Test
+    /// Owner Functions.
     /// ----------------------------------------------------------------------
 
     function test_GrantRoles(address user, uint256 role) public payable {
@@ -75,11 +91,165 @@ contract BulletinTest is Test {
         bulletin.grantRoles(user, role);
     }
 
-    /// -----------------------------------------------------------------------
-    /// Items
-    /// ----------------------------------------------------------------------
+    function test_addAskByOwner(
+        bool fulfilled,
+        address user,
+        uint40 role
+    ) public payable {
+        uint256 askId = askAndDropByOwner();
+
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, owner);
+        assertEq(_ask.role, uint40(uint256(_OWNER_SLOT)));
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(mock));
+        assertEq(_ask.drop, 1 ether);
+    }
+
+    function askByOwner() public payable returns (uint256 id) {
+        IBulletin.Ask memory ask = IBulletin.Ask({
+            fulfilled: true,
+            owner: alice,
+            role: 0,
+            title: TEST,
+            detail: TEST,
+            currency: address(0),
+            drop: 0 ether
+        });
+
+        vm.prank(owner);
+        bulletin.addAskByOwner(ask);
+        id = bulletin.askId();
+    }
+
+    function askAndDropByOwner() public payable returns (uint256 id) {
+        IBulletin.Ask memory ask = IBulletin.Ask({
+            fulfilled: true,
+            owner: alice,
+            role: 0,
+            title: TEST,
+            detail: TEST,
+            currency: address(mock),
+            drop: 1 ether
+        });
+        approve(owner, address(bulletin), 1 ether);
+
+        vm.prank(owner);
+        bulletin.addAskByOwner(ask);
+        id = bulletin.askId();
+    }
+
+    function grantRoleByOwner(address user, uint256 role) public payable {
+        vm.prank(owner);
+        bulletin.grantRoles(user, role);
+    }
+
+    function test_addResourceByOwner(
+        bool active,
+        uint40 role,
+        address user
+    ) public payable {
+        IBulletin.Resource memory resource = IBulletin.Resource({
+            active: active,
+            role: role,
+            owner: user,
+            title: TEST,
+            detail: TEST
+        });
+
+        vm.prank(owner);
+        bulletin.addResourceByOwner(resource);
+        uint256 resourceId = bulletin.resourceId();
+
+        IBulletin.Resource memory _resource = bulletin.getResource(resourceId);
+        assertEq(_resource.active, active);
+        assertEq(_resource.role, uint40(uint256(_OWNER_SLOT)));
+        assertEq(_resource.owner, owner);
+        assertEq(_resource.title, TEST);
+        assertEq(_resource.detail, TEST);
+    }
+
+    function test_acceptTradeByOwner() public payable {
+        // setup ask
+        uint256 askId = askAndDropByOwner();
+
+        // grant PERMISSIONED role
+        grantRoleByOwner(alice, PERMISSIONED_USER);
+
+        // setup resource
+        IBulletin.Resource memory resource = IBulletin.Resource({
+            active: true,
+            role: PERMISSIONED_USER,
+            owner: alice,
+            title: TEST,
+            detail: TEST
+        });
+        vm.prank(alice);
+        bulletin.addResource(resource);
+        uint256 resourceId = bulletin.resourceId();
+
+        // grant BULLETIN role
+        grantRoleByOwner(address(bulletin), BULLETIN_ROLE);
+
+        // setup trade
+        bytes memory data;
+        IBulletin.Trade memory trade = IBulletin.Trade({
+            accepted: true,
+            timestamp: 0,
+            resource: bulletin.encodeAsset(
+                address(bulletin),
+                uint96(resourceId)
+            ),
+            feedback: TEST,
+            data: data
+        });
+        vm.prank(alice);
+        bulletin.addTrade(askId, trade);
+        uint256 tradeId = bulletin.tradeIds(askId);
+
+        vm.prank(owner);
+        bulletin.acceptTradeByOwner(askId, tradeId);
+    }
+
+    function test_acceptTradeByOwner_InvalidOwner(
+        uint256 _askId,
+        uint256 _tradeId
+    ) public payable {
+        vm.prank(owner);
+        vm.expectRevert(IBulletin.InvalidOwner.selector);
+        bulletin.acceptTradeByOwner(_askId, _tradeId);
+    }
+
+    function test_acceptTradeByOwner_NothingToTrade(
+        uint256 _tradeId
+    ) public payable {
+        test_addAskByOwner(true, address(0), 0);
+        uint256 askId = bulletin.askId();
+
+        vm.prank(owner);
+        vm.expectRevert(IBulletin.NothingToTrade.selector);
+        bulletin.acceptTradeByOwner(askId, _tradeId);
+    }
+
+    function test_settleAskByOwner() public payable {}
 
     /// -----------------------------------------------------------------------
-    /// Helper
-    /// -----------------------------------------------------------------------
+    /// Permissioned Functions.
+    /// ----------------------------------------------------------------------
+
+    function test_addAsk() public payable {}
+
+    function test_addResource() public payable {}
+
+    function test_addTrade() public payable {}
+
+    function test_acceptTrade() public payable {}
+
+    function test_settleAsk() public payable {}
+
+    function test_incrementUsage() public payable {}
+
+    function test_comment() public payable {}
 }

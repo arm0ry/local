@@ -36,8 +36,8 @@ interface IBulletin {
      * @dev A struct containing all the data required for creating a Resource.
      */
     struct Resource {
+        bool active;
         uint40 role;
-        uint40 expiry;
         address owner;
         string title;
         string detail;
@@ -72,6 +72,9 @@ interface IBulletin {
     error TradeSettlementMismatch();
     error InvalidTotalPercentage();
     error CannotComment();
+    error ResourceNotActive();
+    error ResourceNotValid();
+    error NothingToTrade();
 
     /* -------------------------------------------------------------------------- */
     /*                     Public / External Write Functions.                     */
@@ -137,10 +140,10 @@ interface IBulletin {
 
     function encodeAsset(
         address bulletin,
-        uint256 id
+        uint96 id
     ) external pure returns (bytes32 asset);
 
     function decodeAsset(
         bytes32 asset
-    ) external pure returns (address bulletin, uint256 id);
+    ) external pure returns (address bulletin, uint96 id);
 }
