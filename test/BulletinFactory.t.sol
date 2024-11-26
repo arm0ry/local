@@ -28,26 +28,26 @@ contract BulletinFactoryTest is Test {
         factory = new BulletinFactory(address(bulletin));
     }
 
-    function testDeploy() public payable {
+    function testDeploy(bytes32 name, address user) public payable {
         uint256 id = factory.bulletinId();
-        vm.prank(alice);
-        address deployed = factory.deployBulletin(TEST);
+        vm.prank(user);
+        address deployed = factory.deployBulletin(name);
         uint256 id_ = factory.bulletinId();
         address deployed_ = factory.bulletins(id_);
         bulletin = Bulletin(payable(deployed_));
         assertEq(id + 1, id_);
         assertEq(deployed_, deployed);
-        assertEq(bulletin.owner(), alice);
+        assertEq(bulletin.owner(), user);
     }
 
-    function testDetermination() public payable {
-        addr = payable(factory.determineBulletin(TEST));
+    function testDetermination(bytes32 name, address user) public payable {
+        addr = payable(factory.determineBulletin(name));
         bulletin = Bulletin(addr);
 
-        vm.prank(alice);
-        factory.deployBulletin(TEST);
+        vm.prank(user);
+        factory.deployBulletin(name);
         assertEq(address(bulletin), addr);
-        assertEq(bulletin.owner(), alice);
+        assertEq(bulletin.owner(), user);
     }
 
     function testReceiveETH() public payable {
