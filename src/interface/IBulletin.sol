@@ -25,7 +25,7 @@ interface IBulletin {
      * @dev A struct containing all the data required for creating a Trade per Ask.
      */
     struct Trade {
-        bool accepted;
+        bool approved;
         uint40 timestamp; // accepted ? trade accepted : trade created
         bytes32 resource; // assembly(bulletin, askId/resourceId)
         string feedback; // commentary
@@ -60,7 +60,7 @@ interface IBulletin {
     event AskAdded(uint256 indexed askId);
     event ResourceAdded(uint256 indexed resourceId);
     event TradeAdded(uint256 indexed askId, bytes32 resource);
-    event TradeAccepted(uint256 indexed askId);
+    event TradeApproved(uint256 indexed askId);
     event AskSettled(uint256 indexed askId, uint256 indexed numOfTrades);
 
     /* -------------------------------------------------------------------------- */
@@ -69,6 +69,7 @@ interface IBulletin {
 
     error InvalidOwner();
     error InvalidTrade();
+    error InvalidWithdrawal();
     error TradeSettlementMismatch();
     error InvalidTotalPercentage();
     error CannotComment();
@@ -80,30 +81,22 @@ interface IBulletin {
     /*                     Public / External Write Functions.                     */
     /* -------------------------------------------------------------------------- */
 
-    // Owner.
-    function addAskByOwner(Ask calldata a) external;
-    function addResourceByOwner(Resource calldata r) external;
-    function acceptTradeByOwner(uint256 _askId, uint256 tradeId) external;
-    function settleAskByOwner(
-        uint256 _askId,
-        uint16[] calldata percentages
-    ) external;
+    // Assets.
+    function ask(Ask calldata a) external payable;
+    function resource(Resource calldata r) external;
+    function trade(uint256 askId, Trade calldata t) external;
 
-    // Permissioned users.
-    function addAsk(Ask calldata a) external;
-    function addResource(Resource calldata r) external;
-    function addTrade(uint256 id, Trade calldata t) external;
-    function acceptTrade(uint256 _askId, uint256 tradeId) external;
+    function updateAsk(uint256 askId, Ask calldata a) external;
+    function withdrawAsk(uint256 askId) external;
     function settleAsk(uint256 _askId, uint16[] calldata percentages) external;
-
-    // Permissioned bulletins.
+    function updateResource(uint256 _resourceId, Resource calldata r) external;
+    function approveTrade(uint256 _askId, uint256 tradeId) external;
+    function rejectTrade(uint256 _askId, uint256 tradeId) external;
     function incrementUsage(
         uint256 role,
         uint256 resourceId,
-        bytes32 ask
+        bytes32 bulletinAsk // encodeAsset(address(bulletin), uint96(askId))
     ) external;
-
-    // Permissioned `Resource` user.
     function comment(
         uint256 _resourceId,
         uint256 _usageId,
@@ -132,7 +125,7 @@ interface IBulletin {
         uint256 id,
         bytes32 key,
         uint40 time
-    ) external view returns (Trade[] memory _trades);
+    ) external returns (Trade[] memory _trades);
 
     /* -------------------------------------------------------------------------- */
     /*                      Public / External Pure Functions.                     */
