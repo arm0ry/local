@@ -68,6 +68,7 @@ interface IBulletin {
     /* -------------------------------------------------------------------------- */
 
     error InvalidOwner();
+    error InvalidUpdate();
     error InvalidTrade();
     error InvalidWithdrawal();
     error TradeSettlementMismatch();

@@ -79,17 +79,18 @@ contract Bulletin is OwnableRoles, IBulletin {
     /* -------------------------------------------------------------------------- */
 
     function ask(Ask calldata a) external payable onlyOwnerOrRoles(a.role) {
+        // Transfer currency drop to address(this).
+        route(a.currency, msg.sender, address(this), a.drop);
+
         unchecked {
-            ++askId;
+            _setAsk(++askId, a);
         }
-        _setAsk(askId, a);
     }
 
     function resource(Resource calldata r) external onlyOwnerOrRoles(r.role) {
         unchecked {
-            ++resourceId;
+            _setResource(++resourceId, r);
         }
-        _setResource(resourceId, r);
     }
 
     /// target `askId`
@@ -127,26 +128,33 @@ contract Bulletin is OwnableRoles, IBulletin {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                          Update / Process Assets.                          */
+    /*                               Manage Assets.                               */
     /* -------------------------------------------------------------------------- */
 
     /// @notice Ask
 
     // TODO: test
-    function updateAsk(
-        uint256 _askId,
-        Ask calldata a
-    ) external isPoster(true, _askId) {
+    function updateAsk(uint256 _askId, Ask calldata a) external {
+        Ask memory _a = asks[_askId];
+        if (_a.owner != msg.sender) revert InvalidOwner();
+        if (_a.fulfilled) revert InvalidUpdate();
+
+        if (_a.drop > 0 && _a.drop != a.drop) {
+            route(_a.currency, address(this), msg.sender, _a.drop);
+
+            // Transfer currency drop to address(this).
+            route(a.currency, msg.sender, address(this), a.drop);
+        }
+
         _setAsk(_askId, a);
     }
 
-    // TODO: test
     function withdrawAsk(uint256 _askId) external {
         Ask memory a = asks[_askId];
         if (a.owner != msg.sender) revert InvalidOwner();
         if (a.fulfilled) revert InvalidWithdrawal();
 
-        route(true, a.currency, address(this), a.owner, a.drop);
+        route(a.currency, address(this), a.owner, a.drop);
         delete asks[_askId].currency;
         delete asks[_askId].drop;
     }
@@ -218,11 +226,6 @@ contract Bulletin is OwnableRoles, IBulletin {
     /* -------------------------------------------------------------------------- */
 
     function _setAsk(uint256 _askId, Ask calldata a) internal {
-        // todo: return deposit if not fulfilled and if drop is different
-
-        // Transfer currency drop to address(this).
-        route(false, a.currency, msg.sender, address(this), a.drop);
-
         // Store ask.
         asks[_askId] = Ask({
             fulfilled: false,
@@ -296,7 +299,6 @@ contract Bulletin is OwnableRoles, IBulletin {
         for (uint256 i; i < _trades.length; ++i) {
             // Pay resource owner.
             route(
-                true,
                 a.currency,
                 address(this),
                 getResourceOwner(_trades[i].resource),
@@ -327,7 +329,6 @@ contract Bulletin is OwnableRoles, IBulletin {
 
     /// @dev Helper function to route Ether and ERC20 tokens.
     function route(
-        bool out,
         address currency,
         address from,
         address to,
@@ -336,7 +337,7 @@ contract Bulletin is OwnableRoles, IBulletin {
         if (currency == address(0)) {
             SafeTransferLib.safeTransferETH(to, amount);
         } else {
-            (out)
+            (from == address(this))
                 ? SafeTransferLib.safeTransfer(currency, to, amount)
                 : SafeTransferLib.safeTransferFrom(currency, from, to, amount);
         }

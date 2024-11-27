@@ -33,7 +33,9 @@ contract BulletinTest is Test {
     uint40 constant PAST = 100000;
     uint40 constant FUTURE = 2527482181;
     string TEST = "TEST";
+    string TEST2 = "TEST2";
     bytes constant BYTES = bytes(string("BYTES"));
+    bytes constant BYTES2 = bytes(string("BYTES2"));
     uint256 defaultBulletinBalance = 10 ether;
 
     uint256[] itemIds;
@@ -47,19 +49,12 @@ contract BulletinTest is Test {
         deployBulletin(owner);
 
         mock = new MockERC20(TEST, TEST, 18);
-        mock.mint(owner, 100 ether);
-        mock.mint(alice, 100 ether);
-        mock.mint(bob, 100 ether);
     }
 
     function testReceiveETH() public payable {
         (bool sent, ) = address(bulletin).call{value: 5 ether}("");
         assert(sent);
     }
-
-    /// -----------------------------------------------------------------------
-    /// Helpers
-    /// -----------------------------------------------------------------------
 
     function deployBulletin(address user) public payable {
         bulletin = new Bulletin();
@@ -76,81 +71,136 @@ contract BulletinTest is Test {
         mock.approve(spender, amount);
     }
 
-    function grantRoleByOwner(address user, uint256 role) public payable {
+    function grantRole(address user, uint256 role) public payable {
         vm.prank(owner);
         bulletin.grantRoles(user, role);
     }
 
-    function askByOwner() public payable returns (uint256 id) {
-        IBulletin.Ask memory ask = IBulletin.Ask({
+    /// -----------------------------------------------------------------------
+    /// Helpers.
+    /// -----------------------------------------------------------------------
+
+    /// @notice Ask
+
+    function ask(
+        bool isOwner,
+        address user
+    ) public payable returns (uint256 id) {
+        IBulletin.Ask memory a = IBulletin.Ask({
             fulfilled: true,
-            owner: alice,
-            role: 0,
+            owner: user,
+            role: PERMISSIONED_USER,
             title: TEST,
             detail: TEST,
             currency: address(0),
             drop: 0 ether
         });
 
-        vm.prank(owner);
-        bulletin.ask(ask);
+        vm.prank((isOwner) ? owner : user);
+        bulletin.ask(a);
         id = bulletin.askId();
     }
 
-    function askAndDropEtherByOwner() public payable returns (uint256 id) {
-        IBulletin.Ask memory ask = IBulletin.Ask({
+    function askAndDepositEther(
+        bool isOwner,
+        address user,
+        uint256 amount
+    ) public payable returns (uint256 id) {
+        IBulletin.Ask memory a = IBulletin.Ask({
             fulfilled: true,
-            owner: alice,
-            role: 0,
+            owner: user,
+            role: PERMISSIONED_USER,
             title: TEST,
             detail: TEST,
             currency: address(0),
-            drop: 1 ether
+            drop: amount
         });
 
-        vm.prank(owner);
-        bulletin.ask(ask);
+        vm.prank((isOwner) ? owner : user);
+        bulletin.ask(a);
         id = bulletin.askId();
     }
 
-    function askAndDropCurrencyByOwner() public payable returns (uint256 id) {
-        IBulletin.Ask memory ask = IBulletin.Ask({
+    function askAndDepositCurrency(
+        bool isOwner,
+        address user,
+        uint256 amount
+    ) public payable returns (uint256 id) {
+        IBulletin.Ask memory a = IBulletin.Ask({
             fulfilled: true,
-            owner: alice,
-            role: 0,
+            owner: user,
+            role: PERMISSIONED_USER,
             title: TEST,
             detail: TEST,
             currency: address(mock),
-            drop: 1 ether
+            drop: amount
         });
-        mockApprove(owner, address(bulletin), 1 ether);
 
-        vm.prank(owner);
-        bulletin.ask(ask);
+        mockApprove((isOwner) ? owner : user, address(bulletin), amount);
+
+        vm.prank((isOwner) ? owner : user);
+        bulletin.ask(a);
         id = bulletin.askId();
     }
 
-    function resourceByOwner() public payable returns (uint256 id) {
-        IBulletin.Resource memory resource = IBulletin.Resource({
+    function updateAsk(
+        address op,
+        uint256 askId,
+        IBulletin.Ask memory a
+    ) public payable {
+        vm.prank(op);
+        bulletin.updateAsk(askId, a);
+    }
+
+    function withdrawAsk(address op, uint256 askId) public payable {
+        vm.prank(op);
+        bulletin.withdrawAsk(askId);
+    }
+
+    /// @notice Resource
+
+    function resource(
+        bool isOwner,
+        address user
+    ) public payable returns (uint256 id) {
+        IBulletin.Resource memory r = IBulletin.Resource({
             active: true,
-            role: 0,
-            owner: alice,
+            role: PERMISSIONED_USER,
+            owner: user,
             title: TEST,
             detail: TEST
         });
 
-        vm.prank(owner);
-        bulletin.resource(resource);
+        vm.prank((isOwner) ? owner : user);
+        bulletin.resource(r);
         id = bulletin.resourceId();
     }
 
+    function updateResource(
+        address op,
+        uint256 resourceId,
+        IBulletin.Resource memory r
+    ) public payable {
+        vm.prank(op);
+        bulletin.updateResource(resourceId, r);
+    }
+
     function approveTrade(
-        address user,
+        address op,
         uint256 askId,
         uint256 tradeId
     ) public payable {
-        vm.prank(user);
+        vm.prank(op);
         bulletin.approveTrade(askId, tradeId);
+    }
+
+    function rejectTrade(
+        address op,
+        uint256 askId,
+        uint256 tradeId
+    ) public payable {
+        vm.prank(op);
+        bulletin.rejectTrade(askId, tradeId);
     }
 
     function settleAsk(
@@ -162,74 +212,7 @@ contract BulletinTest is Test {
         bulletin.settleAsk(askId, percentages);
     }
 
-    function askByUser(address user) public payable returns (uint256 id) {
-        IBulletin.Ask memory ask = IBulletin.Ask({
-            fulfilled: true,
-            owner: user,
-            role: PERMISSIONED_USER,
-            title: TEST,
-            detail: TEST,
-            currency: address(0),
-            drop: 0 ether
-        });
-
-        vm.prank(user);
-        bulletin.ask(ask);
-        id = bulletin.askId();
-    }
-
-    function askAndDropEtherByUser(
-        address user
-    ) public payable returns (uint256 id) {
-        IBulletin.Ask memory ask = IBulletin.Ask({
-            fulfilled: true,
-            owner: user,
-            role: PERMISSIONED_USER,
-            title: TEST,
-            detail: TEST,
-            currency: address(0),
-            drop: 1 ether
-        });
-
-        vm.prank(user);
-        bulletin.ask(ask);
-        id = bulletin.askId();
-    }
-
-    function askAndDropCurrencyByUser(
-        address user
-    ) public payable returns (uint256 id) {
-        IBulletin.Ask memory ask = IBulletin.Ask({
-            fulfilled: true,
-            owner: user,
-            role: PERMISSIONED_USER,
-            title: TEST,
-            detail: TEST,
-            currency: address(mock),
-            drop: 1 ether
-        });
-        mockApprove(user, address(bulletin), 1 ether);
-
-        vm.prank(user);
-        bulletin.ask(ask);
-        id = bulletin.askId();
-    }
-
-    function resourceByUser(address user) public payable returns (uint256 id) {
-        IBulletin.Resource memory resource = IBulletin.Resource({
-            active: true,
-            role: PERMISSIONED_USER,
-            owner: user,
-            title: TEST,
-            detail: TEST
-        });
-
-        vm.prank(user);
-        bulletin.resource(resource);
-        id = bulletin.resourceId();
-    }
-
-    function setupTradeByUser(
+    function setupTrade(
         address user,
         uint256 askId,
         address userBulletin,
@@ -250,17 +233,13 @@ contract BulletinTest is Test {
         id = bulletin.tradeIds(askId);
     }
 
-    function acceptTradeByUser(uint256 askId, uint256 tradeId) public payable {}
-
-    function settleAskByUser() public payable {}
-
     /// -----------------------------------------------------------------------
-    /// Owner Functions.
+    /// Tests.
     /// ----------------------------------------------------------------------
 
     function test_GrantRoles(address user, uint256 role) public payable {
         vm.assume(role > 0);
-        grantRoleByOwner(user, role);
+        grantRole(user, role);
         assertEq(bulletin.hasAnyRole(user, role), true);
     }
 
@@ -273,7 +252,25 @@ contract BulletinTest is Test {
     }
 
     function test_ask() public payable {
-        uint256 askId = askAndDropCurrencyByOwner();
+        uint256 askId = ask(true, owner);
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, owner);
+        assertEq(_ask.role, uint40(uint256(_OWNER_SLOT)));
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, 0);
+    }
+
+    function test_askAndDepositCurrency(
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        vm.assume(max > amount);
+        mock.mint(owner, max);
+        uint256 askId = askAndDepositCurrency(true, owner, amount);
         IBulletin.Ask memory _ask = bulletin.getAsk(askId);
 
         assertEq(_ask.fulfilled, false);
@@ -282,11 +279,238 @@ contract BulletinTest is Test {
         assertEq(_ask.title, TEST);
         assertEq(_ask.detail, TEST);
         assertEq(_ask.currency, address(mock));
-        assertEq(_ask.drop, 1 ether);
+        assertEq(_ask.drop, amount);
+
+        assertEq(MockERC20(mock).balanceOf(address(bulletin)), amount);
+        assertEq(MockERC20(mock).balanceOf(owner), max - amount);
     }
 
+    function test_askAndDepositEther(
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        vm.assume(max > amount);
+        vm.deal(owner, max);
+        uint256 askId = askAndDepositCurrency(true, owner, amount);
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, owner);
+        assertEq(_ask.role, uint40(uint256(_OWNER_SLOT)));
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, amount);
+
+        assertEq(address(bulletin).balance, amount);
+        assertEq(address(owner).balance, max - amount);
+    }
+
+    function test_askByUser(address user) public payable {
+        grantRole(user, PERMISSIONED_USER);
+
+        uint256 askId = ask(false, user);
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, user);
+        assertEq(_ask.role, PERMISSIONED_USER);
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, 0);
+    }
+
+    function test_askAndDepositCurrencyByUser(
+        address user,
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        vm.assume(max > amount);
+        mock.mint(user, max);
+        grantRole(user, PERMISSIONED_USER);
+
+        uint256 askId = askAndDepositCurrency(false, user, amount);
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, user);
+        assertEq(_ask.role, PERMISSIONED_USER);
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(mock));
+        assertEq(_ask.drop, amount);
+
+        assertEq(MockERC20(mock).balanceOf(address(bulletin)), amount);
+        assertEq(MockERC20(mock).balanceOf(alice), max - amount);
+    }
+
+    function test_askAndDepositEtherByUser(
+        address user,
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        vm.assume(max > amount);
+        vm.deal(alice, max);
+        uint256 askId = askAndDepositCurrency(true, owner, amount);
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, alice);
+        assertEq(_ask.role, PERMISSIONED_USER);
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, amount);
+
+        assertEq(address(bulletin).balance, amount);
+        assertEq(address(alice).balance, max - amount);
+    }
+
+    // todo:
+    function test_updateAskAndCurrency() public payable {}
+
+    function test_updateAskAndEther() public payable {}
+
+    function test_updateAskWithDifferentCoin() public payable {}
+
+    function test_updateAsk_InvalidOwner() public payable {}
+
+    function test_updateAsk_InvalidUpdate() public payable {}
+
+    function test_withdraw() public payable {
+        uint256 askId = ask(true, owner);
+
+        withdrawAsk(owner, askId);
+
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, owner);
+        assertEq(_ask.role, uint40(uint256(_OWNER_SLOT)));
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, 0);
+    }
+
+    function test_withdrawAndReturnCurrency(
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        vm.assume(max > amount);
+        mock.mint(owner, max);
+        uint256 askId = askAndDepositCurrency(true, owner, amount);
+
+        withdrawAsk(owner, askId);
+
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, owner);
+        assertEq(_ask.role, uint40(uint256(_OWNER_SLOT)));
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, 0);
+
+        assertEq(MockERC20(mock).balanceOf(address(bulletin)), 0);
+        assertEq(MockERC20(mock).balanceOf(owner), max);
+    }
+
+    function test_withdrawAndReturnEther(
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        vm.assume(max > amount);
+        vm.deal(owner, max);
+        uint256 askId = askAndDepositEther(true, owner, amount);
+
+        withdrawAsk(owner, askId);
+
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, owner);
+        assertEq(_ask.role, uint40(uint256(_OWNER_SLOT)));
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, 0);
+
+        assertEq(address(bulletin).balance, 0);
+        assertEq(address(owner).balance, max);
+    }
+
+    function test_withdrawByUser(address user) public payable {
+        uint256 askId = ask(false, user);
+
+        withdrawAsk(user, askId);
+
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, user);
+        assertEq(_ask.role, PERMISSIONED_USER);
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, 0);
+    }
+
+    function test_withdrawAndReturnCurrencyByUser(
+        address user,
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        mock.mint(user, max);
+        vm.assume(max > amount);
+
+        uint256 askId = askAndDepositCurrency(false, user, amount);
+
+        withdrawAsk(user, askId);
+
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, user);
+        assertEq(_ask.role, PERMISSIONED_USER);
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, 0);
+
+        assertEq(MockERC20(mock).balanceOf(address(bulletin)), 0);
+        assertEq(MockERC20(mock).balanceOf(owner), max);
+    }
+
+    function test_withdrawAndReturnEtherByUser(
+        address user,
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        vm.deal(user, max);
+        vm.assume(max > amount);
+        uint256 askId = askAndDepositEther(false, user, amount);
+
+        withdrawAsk(user, askId);
+
+        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
+        assertEq(_ask.fulfilled, false);
+        assertEq(_ask.owner, user);
+        assertEq(_ask.role, PERMISSIONED_USER);
+        assertEq(_ask.title, TEST);
+        assertEq(_ask.detail, TEST);
+        assertEq(_ask.currency, address(0));
+        assertEq(_ask.drop, 0);
+
+        assertEq(address(bulletin).balance, 0);
+        assertEq(address(owner).balance, max);
+    }
+
+    // todo: asserts
+    function test_withdraw_InvalidOwner() public payable {}
+
+    // todo: asserts
+    function test_withdraw_InvalidWithdrawal() public payable {}
+
     function test_resource() public payable {
-        uint256 resourceId = resourceByOwner();
+        uint256 resourceId = resource(true, owner);
         IBulletin.Resource memory _resource = bulletin.getResource(resourceId);
 
         assertEq(_resource.active, true);
@@ -296,22 +520,74 @@ contract BulletinTest is Test {
         assertEq(_resource.detail, TEST);
     }
 
-    function test_approveTrade() public payable {
+    function test_updateResource() public payable {
+        uint256 resourceId = resource(true, owner);
+
+        IBulletin.Resource memory r = IBulletin.Resource({
+            active: false,
+            role: 0,
+            owner: alice,
+            title: TEST2,
+            detail: TEST2
+        });
+
+        updateResource(owner, resourceId, r);
+        IBulletin.Resource memory _resource = bulletin.getResource(resourceId);
+
+        // todo: asserts
+        assertEq(_resource.active, false);
+        assertEq(_resource.role, uint40(uint256(_OWNER_SLOT)));
+        assertEq(_resource.owner, owner);
+        assertEq(_resource.title, TEST2);
+        assertEq(_resource.detail, TEST2);
+    }
+
+    function test_resourceByUser(address user) public payable {
+        grantRole(user, PERMISSIONED_USER);
+        uint256 resourceId = resource(false, user);
+
+        IBulletin.Resource memory r = IBulletin.Resource({
+            active: false,
+            role: PERMISSIONED_USER,
+            owner: user,
+            title: TEST2,
+            detail: TEST2
+        });
+
+        updateResource(user, resourceId, r);
+        IBulletin.Resource memory _resource = bulletin.getResource(resourceId);
+
+        // todo: asserts
+        assertEq(_resource.active, false);
+        assertEq(_resource.role, PERMISSIONED_USER);
+        assertEq(_resource.owner, alice);
+        assertEq(_resource.title, TEST2);
+        assertEq(_resource.detail, TEST2);
+    }
+
+    function test_approveTrade(
+        address user,
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        mock.mint(owner, max);
+        vm.assume(max > amount);
+
         // setup ask
-        uint256 askId = askAndDropCurrencyByOwner();
+        uint256 askId = askAndDepositCurrency(true, owner, amount);
 
         // grant PERMISSIONED role
-        grantRoleByOwner(alice, PERMISSIONED_USER);
+        grantRole(user, PERMISSIONED_USER);
 
         // setup resource
-        uint256 resourceId = resourceByUser(alice);
+        uint256 resourceId = resource(false, user);
 
         // grant BULLETIN role
-        grantRoleByOwner(address(bulletin), BULLETIN_ROLE);
+        // grantRole(address(bulletin), BULLETIN_ROLE);
 
         // setup trade
-        uint256 tradeId = setupTradeByUser(
-            alice,
+        uint256 tradeId = setupTrade(
+            user,
             askId,
             address(bulletin),
             resourceId
@@ -321,6 +597,51 @@ contract BulletinTest is Test {
 
         // approve trade
         approveTrade(owner, askId, tradeId);
+        trade = bulletin.getTrade(askId, tradeId);
+
+        assertEq(trade.approved, !approved);
+        assertEq(trade.timestamp, block.timestamp);
+        assertEq(
+            trade.resource,
+            bulletin.encodeAsset(address(bulletin), uint96(resourceId))
+        );
+        assertEq(trade.feedback, TEST);
+        assertEq(trade.data, BYTES);
+    }
+
+    function test_rejectTrade(
+        address user,
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        mock.mint(owner, max);
+        vm.assume(max > amount);
+
+        // setup ask
+        uint256 askId = askAndDepositCurrency(true, owner, amount);
+
+        // grant PERMISSIONED role
+        grantRole(user, PERMISSIONED_USER);
+
+        // setup resource
+        uint256 resourceId = resource(false, user);
+
+        // setup trade
+        uint256 tradeId = setupTrade(
+            user,
+            askId,
+            address(bulletin),
+            resourceId
+        );
+
+        // approve trade
+        approveTrade(owner, askId, tradeId);
+
+        IBulletin.Trade memory trade = bulletin.getTrade(askId, tradeId);
+        bool approved = trade.approved;
+
+        // reject trade
+        rejectTrade(owner, askId, tradeId);
         trade = bulletin.getTrade(askId, tradeId);
 
         assertEq(trade.approved, !approved);
@@ -351,23 +672,30 @@ contract BulletinTest is Test {
         bulletin.approveTrade(askId, _tradeId);
     }
 
-    function test_settleAsk() public payable {
+    function test_settleAsk(
+        address user,
+        address user2,
+        uint256 max,
+        uint256 amount
+    ) public payable {
+        mock.mint(owner, max);
+        vm.assume(max > amount);
         // setup ask
-        uint256 askId = askAndDropCurrencyByOwner();
+        uint256 askId = askAndDepositCurrency(true, owner, amount);
 
         // grant PERMISSIONED role
-        grantRoleByOwner(alice, PERMISSIONED_USER);
-        grantRoleByOwner(bob, PERMISSIONED_USER);
+        grantRole(user, PERMISSIONED_USER);
+        grantRole(user2, PERMISSIONED_USER);
 
         // grant BULLETIN role
-        grantRoleByOwner(address(bulletin), BULLETIN_ROLE);
+        grantRole(address(bulletin), BULLETIN_ROLE);
 
         // setup first resource
-        uint256 resourceId = resourceByUser(alice);
+        uint256 resourceId = resource(false, user);
 
         // setup first trade
-        uint256 tradeId = setupTradeByUser(
-            alice,
+        uint256 tradeId = setupTrade(
+            user,
             askId,
             address(bulletin),
             resourceId
@@ -377,10 +705,10 @@ contract BulletinTest is Test {
         approveTrade(owner, askId, tradeId);
 
         // setup second resource
-        resourceId = resourceByUser(bob);
+        resourceId = resource(false, user2);
 
         // setup second trade
-        tradeId = setupTradeByUser(bob, askId, address(bulletin), resourceId);
+        tradeId = setupTrade(user2, askId, address(bulletin), resourceId);
 
         // approve second trade
         approveTrade(owner, askId, tradeId);
@@ -398,41 +726,15 @@ contract BulletinTest is Test {
     /// Permissioned Functions.
     /// ----------------------------------------------------------------------
 
-    function test_askByUser() public payable {
-        grantRoleByOwner(alice, PERMISSIONED_USER);
-
-        uint256 askId = askAndDropCurrencyByUser(alice);
-        IBulletin.Ask memory _ask = bulletin.getAsk(askId);
-
-        assertEq(_ask.fulfilled, false);
-        assertEq(_ask.owner, alice);
-        assertEq(_ask.role, PERMISSIONED_USER);
-        assertEq(_ask.title, TEST);
-        assertEq(_ask.detail, TEST);
-        assertEq(_ask.currency, address(mock));
-        assertEq(_ask.drop, 1 ether);
-    }
-
-    function test_resourceByUser() public payable {
-        grantRoleByOwner(alice, PERMISSIONED_USER);
-
-        uint256 resourceId = resourceByUser(alice);
-        IBulletin.Resource memory _resource = bulletin.getResource(resourceId);
-
-        assertEq(_resource.active, true);
-        assertEq(_resource.role, PERMISSIONED_USER);
-        assertEq(_resource.owner, alice);
-        assertEq(_resource.title, TEST);
-        assertEq(_resource.detail, TEST);
-    }
-
     function test_addTradeByUser() public payable {
-        uint256 askId = askByOwner();
+        uint256 askId = ask(true, owner);
 
-        grantRoleByOwner(alice, PERMISSIONED_USER);
-        uint256 resourceId = resourceByUser(alice);
+        grantRole(alice, PERMISSIONED_USER);
+        uint256 resourceId = resource(false, alice);
 
-        setupTradeByUser(alice, askId, address(bulletin), resourceId);
+        setupTrade(alice, askId, address(bulletin), resourceId);
+
+        // todo: asserts
     }
 
     function test_incrementUsage() public payable {}
