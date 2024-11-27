@@ -79,6 +79,11 @@ contract Bulletin is OwnableRoles, IBulletin {
     /* -------------------------------------------------------------------------- */
 
     function ask(Ask calldata a) external payable onlyOwnerOrRoles(a.role) {
+        // todo: modifier?
+        if (a.currency == address(0)) {
+            if (msg.value != a.drop) revert InsufficientAmount();
+        }
+
         // Transfer currency drop to address(this).
         route(a.currency, msg.sender, address(this), a.drop);
 

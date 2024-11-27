@@ -67,6 +67,7 @@ interface IBulletin {
     /*                                   Errors.                                  */
     /* -------------------------------------------------------------------------- */
 
+    error InsufficientAmount();
     error InvalidOwner();
     error InvalidUpdate();
     error InvalidTrade();

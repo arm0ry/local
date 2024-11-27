@@ -291,7 +291,7 @@ contract BulletinTest is Test {
     ) public payable {
         vm.assume(max > amount);
         vm.deal(owner, max);
-        uint256 askId = askAndDepositCurrency(true, owner, amount);
+        uint256 askId = askAndDepositEther(true, owner, amount);
         IBulletin.Ask memory _ask = bulletin.getAsk(askId);
 
         assertEq(_ask.fulfilled, false);
@@ -330,6 +330,7 @@ contract BulletinTest is Test {
         mock.mint(user, max);
         grantRole(user, PERMISSIONED_USER);
 
+        emit log_uint(mock.balanceOf(user));
         uint256 askId = askAndDepositCurrency(false, user, amount);
         IBulletin.Ask memory _ask = bulletin.getAsk(askId);
 
@@ -342,7 +343,7 @@ contract BulletinTest is Test {
         assertEq(_ask.drop, amount);
 
         assertEq(MockERC20(mock).balanceOf(address(bulletin)), amount);
-        assertEq(MockERC20(mock).balanceOf(alice), max - amount);
+        assertEq(MockERC20(mock).balanceOf(user), max - amount);
     }
 
     function test_askAndDepositEtherByUser(
@@ -351,12 +352,12 @@ contract BulletinTest is Test {
         uint256 amount
     ) public payable {
         vm.assume(max > amount);
-        vm.deal(alice, max);
+        vm.deal(user, max);
         uint256 askId = askAndDepositCurrency(true, owner, amount);
         IBulletin.Ask memory _ask = bulletin.getAsk(askId);
 
         assertEq(_ask.fulfilled, false);
-        assertEq(_ask.owner, alice);
+        assertEq(_ask.owner, user);
         assertEq(_ask.role, PERMISSIONED_USER);
         assertEq(_ask.title, TEST);
         assertEq(_ask.detail, TEST);
@@ -364,7 +365,7 @@ contract BulletinTest is Test {
         assertEq(_ask.drop, amount);
 
         assertEq(address(bulletin).balance, amount);
-        assertEq(address(alice).balance, max - amount);
+        assertEq(address(user).balance, max - amount);
     }
 
     // todo:
@@ -560,7 +561,7 @@ contract BulletinTest is Test {
         // todo: asserts
         assertEq(_resource.active, false);
         assertEq(_resource.role, PERMISSIONED_USER);
-        assertEq(_resource.owner, alice);
+        assertEq(_resource.owner, user);
         assertEq(_resource.title, TEST2);
         assertEq(_resource.detail, TEST2);
     }
