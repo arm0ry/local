@@ -117,7 +117,7 @@ contract BulletinTest is Test {
         });
 
         vm.prank((isOwner) ? owner : user);
-        bulletin.ask(a);
+        bulletin.ask{value: amount}(a);
         id = bulletin.askId();
     }
 
@@ -326,11 +326,11 @@ contract BulletinTest is Test {
         uint256 max,
         uint256 amount
     ) public payable {
+        vm.assume(user != address(bulletin));
         vm.assume(max > amount);
         mock.mint(user, max);
         grantRole(user, PERMISSIONED_USER);
 
-        emit log_uint(mock.balanceOf(user));
         uint256 askId = askAndDepositCurrency(false, user, amount);
         IBulletin.Ask memory _ask = bulletin.getAsk(askId);
 
@@ -351,9 +351,12 @@ contract BulletinTest is Test {
         uint256 max,
         uint256 amount
     ) public payable {
+        vm.assume(user != address(bulletin));
         vm.assume(max > amount);
         vm.deal(user, max);
-        uint256 askId = askAndDepositCurrency(true, owner, amount);
+        grantRole(user, PERMISSIONED_USER);
+
+        uint256 askId = askAndDepositEther(false, user, amount);
         IBulletin.Ask memory _ask = bulletin.getAsk(askId);
 
         assertEq(_ask.fulfilled, false);
@@ -441,8 +444,10 @@ contract BulletinTest is Test {
     }
 
     function test_withdrawByUser(address user) public payable {
-        uint256 askId = ask(false, user);
+        vm.assume(user != address(bulletin));
+        grantRole(user, PERMISSIONED_USER);
 
+        uint256 askId = ask(false, user);
         withdrawAsk(user, askId);
 
         IBulletin.Ask memory _ask = bulletin.getAsk(askId);
@@ -460,8 +465,10 @@ contract BulletinTest is Test {
         uint256 max,
         uint256 amount
     ) public payable {
+        vm.assume(user != address(bulletin));
         mock.mint(user, max);
         vm.assume(max > amount);
+        grantRole(user, PERMISSIONED_USER);
 
         uint256 askId = askAndDepositCurrency(false, user, amount);
 
@@ -477,7 +484,7 @@ contract BulletinTest is Test {
         assertEq(_ask.drop, 0);
 
         assertEq(MockERC20(mock).balanceOf(address(bulletin)), 0);
-        assertEq(MockERC20(mock).balanceOf(owner), max);
+        assertEq(MockERC20(mock).balanceOf(user), max);
     }
 
     function test_withdrawAndReturnEtherByUser(
@@ -485,10 +492,12 @@ contract BulletinTest is Test {
         uint256 max,
         uint256 amount
     ) public payable {
+        vm.assume(user != address(bulletin));
         vm.deal(user, max);
         vm.assume(max > amount);
-        uint256 askId = askAndDepositEther(false, user, amount);
+        grantRole(user, PERMISSIONED_USER);
 
+        uint256 askId = askAndDepositEther(false, user, amount);
         withdrawAsk(user, askId);
 
         IBulletin.Ask memory _ask = bulletin.getAsk(askId);
@@ -501,7 +510,7 @@ contract BulletinTest is Test {
         assertEq(_ask.drop, 0);
 
         assertEq(address(bulletin).balance, 0);
-        assertEq(address(owner).balance, max);
+        assertEq(address(user).balance, max);
     }
 
     // todo: asserts
@@ -535,7 +544,6 @@ contract BulletinTest is Test {
         updateResource(owner, resourceId, r);
         IBulletin.Resource memory _resource = bulletin.getResource(resourceId);
 
-        // todo: asserts
         assertEq(_resource.active, false);
         assertEq(_resource.role, uint40(uint256(_OWNER_SLOT)));
         assertEq(_resource.owner, owner);
@@ -558,7 +566,6 @@ contract BulletinTest is Test {
         updateResource(user, resourceId, r);
         IBulletin.Resource memory _resource = bulletin.getResource(resourceId);
 
-        // todo: asserts
         assertEq(_resource.active, false);
         assertEq(_resource.role, PERMISSIONED_USER);
         assertEq(_resource.owner, user);
@@ -679,8 +686,12 @@ contract BulletinTest is Test {
         uint256 max,
         uint256 amount
     ) public payable {
-        mock.mint(owner, max);
+        vm.assume(1e20 > max);
         vm.assume(max > amount);
+        mock.mint(owner, max);
+        vm.assume(user != address(bulletin));
+        vm.assume(user2 != address(bulletin));
+
         // setup ask
         uint256 askId = askAndDepositCurrency(true, owner, amount);
 

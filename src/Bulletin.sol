@@ -79,11 +79,6 @@ contract Bulletin is OwnableRoles, IBulletin {
     /* -------------------------------------------------------------------------- */
 
     function ask(Ask calldata a) external payable onlyOwnerOrRoles(a.role) {
-        // todo: modifier?
-        if (a.currency == address(0)) {
-            if (msg.value != a.drop) revert InsufficientAmount();
-        }
-
         // Transfer currency drop to address(this).
         route(a.currency, msg.sender, address(this), a.drop);
 
@@ -111,11 +106,6 @@ contract Bulletin is OwnableRoles, IBulletin {
             if (r.owner != msg.sender) revert InvalidOwner();
             if (!r.active) revert ResourceNotActive();
 
-            // Confirmed: would below throw bc msg.sender is not owner ?
-            // Grant this Bulletin a `BULLETIN_ROLE` in contributing bulletin.
-            // This allows approved trades to record usages in contributing bulletin.
-            // IBulletin(_bulletin).grantRoles(address(this), BULLETIN_ROLE);
-
             unchecked {
                 trades[_askId][++tradeIds[_askId]] = Trade({
                     approved: false,
@@ -138,13 +128,12 @@ contract Bulletin is OwnableRoles, IBulletin {
 
     /// @notice Ask
 
-    // TODO: test
-    function updateAsk(uint256 _askId, Ask calldata a) external {
+    function updateAsk(uint256 _askId, Ask calldata a) external payable {
         Ask memory _a = asks[_askId];
         if (_a.owner != msg.sender) revert InvalidOwner();
         if (_a.fulfilled) revert InvalidUpdate();
 
-        if (_a.drop > 0 && _a.drop != a.drop) {
+        if (_a.drop != a.drop) {
             route(_a.currency, address(this), msg.sender, _a.drop);
 
             // Transfer currency drop to address(this).
@@ -340,7 +329,9 @@ contract Bulletin is OwnableRoles, IBulletin {
         uint256 amount
     ) internal {
         if (currency == address(0)) {
-            SafeTransferLib.safeTransferETH(to, amount);
+            if (from == address(this))
+                SafeTransferLib.safeTransferETH(to, amount);
+            else if (msg.value != amount) revert InsufficientAmount();
         } else {
             (from == address(this))
                 ? SafeTransferLib.safeTransfer(currency, to, amount)
@@ -356,7 +347,7 @@ contract Bulletin is OwnableRoles, IBulletin {
         uint256 id,
         bytes32 key,
         uint40 time
-    ) public returns (Trade[] memory _trades) {
+    ) public view returns (Trade[] memory _trades) {
         // Declare for use.
         Trade memory t;
 

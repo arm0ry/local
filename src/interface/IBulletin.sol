@@ -88,7 +88,7 @@ interface IBulletin {
     function resource(Resource calldata r) external;
     function trade(uint256 askId, Trade calldata t) external;
 
-    function updateAsk(uint256 askId, Ask calldata a) external;
+    function updateAsk(uint256 askId, Ask calldata a) external payable;
     function withdrawAsk(uint256 askId) external;
     function settleAsk(uint256 _askId, uint16[] calldata percentages) external;
     function updateResource(uint256 _resourceId, Resource calldata r) external;
