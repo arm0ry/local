@@ -68,12 +68,11 @@ interface IBulletin {
     /* -------------------------------------------------------------------------- */
 
     error InsufficientAmount();
-    error InvalidOwner();
-    error InvalidUpdate();
+    error InvalidOp();
     error InvalidTrade();
-    error InvalidWithdrawal();
-    error TradeSettlementMismatch();
-    error InvalidTotalPercentage();
+    error AlreadyFulfilled();
+    error SettlementMismatch();
+    error TotalPercentageMustBeTenThousand();
     error CannotComment();
     error ResourceNotActive();
     error ResourceNotValid();

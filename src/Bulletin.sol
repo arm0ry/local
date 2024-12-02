@@ -5,8 +5,8 @@ import {IBulletin} from "src/interface/IBulletin.sol";
 import {OwnableRoles} from "src/auth/OwnableRoles.sol";
 import {SafeTransferLib} from "lib/solady/src/utils/SafeTransferLib.sol";
 
-/// @title List
-/// @notice A database management system to store lists of items.
+/// @title Bulletin
+/// @notice A system to store and interact with asks and resources.
 /// @author audsssy.eth
 contract Bulletin is OwnableRoles, IBulletin {
     /* -------------------------------------------------------------------------- */
@@ -48,7 +48,8 @@ contract Bulletin is OwnableRoles, IBulletin {
         }
 
         // Throw when total percentage does not equal to TEN_THOUSAND.
-        if (totalPercentage != TEN_THOUSAND) revert InvalidTotalPercentage();
+        if (totalPercentage != TEN_THOUSAND)
+            revert TotalPercentageMustBeTenThousand();
 
         // Otherwise, continue.
         _;
@@ -57,10 +58,10 @@ contract Bulletin is OwnableRoles, IBulletin {
     modifier isPoster(bool isAsk, uint256 id) {
         if (isAsk) {
             Ask memory a = asks[id];
-            if (a.owner != msg.sender) revert InvalidOwner();
+            if (a.owner != msg.sender) revert InvalidOp();
         } else {
             Resource memory r = resources[id];
-            if (r.owner != msg.sender) revert InvalidOwner();
+            if (r.owner != msg.sender) revert InvalidOp();
         }
 
         _;
@@ -103,7 +104,7 @@ contract Bulletin is OwnableRoles, IBulletin {
         (address _bulletin, uint256 _resourceId) = decodeAsset(t.resource);
         if (_bulletin != address(0) && _resourceId != 0) {
             Resource memory r = IBulletin(_bulletin).getResource(_resourceId);
-            if (r.owner != msg.sender) revert InvalidOwner();
+            if (r.owner != msg.sender) revert InvalidOp();
             if (!r.active) revert ResourceNotActive();
 
             unchecked {
@@ -130,14 +131,14 @@ contract Bulletin is OwnableRoles, IBulletin {
 
     function updateAsk(uint256 _askId, Ask calldata a) external payable {
         Ask memory _a = asks[_askId];
-        if (_a.owner != msg.sender) revert InvalidOwner();
-        if (_a.fulfilled) revert InvalidUpdate();
+        if (_a.owner != msg.sender) revert InvalidOp();
+        if (_a.fulfilled) revert AlreadyFulfilled();
 
         if (_a.drop != a.drop) {
-            route(_a.currency, address(this), msg.sender, _a.drop);
+            route(_a.currency, address(this), _a.owner, _a.drop);
 
             // Transfer currency drop to address(this).
-            route(a.currency, msg.sender, address(this), a.drop);
+            route(a.currency, _a.owner, address(this), a.drop);
         }
 
         _setAsk(_askId, a);
@@ -145,8 +146,8 @@ contract Bulletin is OwnableRoles, IBulletin {
 
     function withdrawAsk(uint256 _askId) external {
         Ask memory a = asks[_askId];
-        if (a.owner != msg.sender) revert InvalidOwner();
-        if (a.fulfilled) revert InvalidWithdrawal();
+        if (a.owner != msg.sender) revert InvalidOp();
+        if (a.fulfilled) revert AlreadyFulfilled();
 
         route(a.currency, address(this), a.owner, a.drop);
         delete asks[_askId].currency;
@@ -258,7 +259,7 @@ contract Bulletin is OwnableRoles, IBulletin {
         Ask memory a = asks[_askId];
 
         // Check original poster.
-        if (a.owner != msg.sender) revert InvalidOwner();
+        if (a.owner != msg.sender) revert InvalidOp();
 
         // Check if `Ask` is already fulfilled.
         if (a.fulfilled) revert InvalidTrade();
@@ -279,14 +280,13 @@ contract Bulletin is OwnableRoles, IBulletin {
     ) internal {
         // Throw when owners mismatch.
         Ask memory a = asks[_askId];
-        if (a.owner != msg.sender) revert InvalidOwner();
+        if (a.owner != msg.sender) revert InvalidOp();
 
         // Tally and retrieve approved trades.
         Trade[] memory _trades = filterTrades(_askId, bytes32("approved"), 0);
 
         // Throw when number of percentages does not match number of approved trades.
-        if (_trades.length != percentages.length)
-            revert TradeSettlementMismatch();
+        if (_trades.length != percentages.length) revert SettlementMismatch();
 
         address _bulletin;
         uint256 _resourceId;
