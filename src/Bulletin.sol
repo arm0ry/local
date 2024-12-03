@@ -55,18 +55,6 @@ contract Bulletin is OwnableRoles, IBulletin {
         _;
     }
 
-    modifier isPoster(bool isAsk, uint256 id) {
-        if (isAsk) {
-            Ask memory a = asks[id];
-            if (a.owner != msg.sender) revert InvalidOp();
-        } else {
-            Resource memory r = resources[id];
-            if (r.owner != msg.sender) revert InvalidOp();
-        }
-
-        _;
-    }
-
     /* -------------------------------------------------------------------------- */
     /*                                Constructor.                                */
     /* -------------------------------------------------------------------------- */
@@ -157,16 +145,16 @@ contract Bulletin is OwnableRoles, IBulletin {
     function settleAsk(
         uint256 _askId,
         uint16[] calldata percentages
-    ) public isPoster(true, _askId) checkSum(percentages) {
+    ) public checkSum(percentages) {
         _settleAsk(_askId, percentages);
     }
 
     /// @notice Resource
 
-    function updateResource(
-        uint256 _resourceId,
-        Resource calldata r
-    ) external isPoster(false, _resourceId) {
+    function updateResource(uint256 _resourceId, Resource calldata r) external {
+        Resource memory _r = resources[_resourceId];
+        if (_r.owner != msg.sender) revert InvalidOp();
+
         _setResource(_resourceId, r);
     }
 
@@ -424,8 +412,15 @@ contract Bulletin is OwnableRoles, IBulletin {
     function getTrade(
         uint256 id,
         uint256 tradeId
-    ) external view returns (Trade memory t) {
+    ) external view returns (Trade memory) {
         return trades[id][tradeId];
+    }
+
+    function getUsage(
+        uint256 id,
+        uint256 usageId
+    ) external view returns (Usage memory) {
+        return usages[id][usageId];
     }
 
     receive() external payable virtual {}

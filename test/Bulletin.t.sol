@@ -28,7 +28,7 @@ contract BulletinTest is Test {
     bytes32 internal constant _OWNER_SLOT =
         0xffffffffffffffffffffffffffffffffffffffffffffffffffffffff74873927;
     uint40 public constant BULLETIN_ROLE = 1 << 1;
-    uint40 public constant PERMISSIONED_USER = 2 << 1;
+    uint40 public constant PERMISSIONED_USER = 1 << 2;
 
     /// @dev Mock Data.
     uint40 constant PAST = 100000;
@@ -479,6 +479,7 @@ contract BulletinTest is Test {
         bulletin.updateAsk(askId, a);
     }
 
+    // todo:
     function test_updateAsk_AlreadyFulfilled() public payable {}
 
     function test_withdraw() public payable {
@@ -772,6 +773,7 @@ contract BulletinTest is Test {
 
     function test_settleAsk(uint256 max, uint256 amount) public payable {
         vm.assume(1e20 > max);
+        vm.assume(amount > 10_000);
         vm.assume(max > amount);
         mock.mint(owner, max);
 
@@ -800,10 +802,10 @@ contract BulletinTest is Test {
         approveTrade(owner, askId, tradeId);
 
         // setup second resource
-        resourceId = resource(false, bob);
+        uint256 resourceId2 = resource(false, bob);
 
         // setup second trade
-        tradeId = setupTrade(bob, askId, address(bulletin), resourceId);
+        tradeId = setupTrade(bob, askId, address(bulletin), resourceId2);
 
         // approve second trade
         approveTrade(owner, askId, tradeId);
@@ -814,18 +816,32 @@ contract BulletinTest is Test {
         perc[1] = 4000;
         settleAsk(owner, askId, perc);
 
-        // TODO: asserts
+        assertEq(
+            MockERC20(mock).balanceOf(address(bulletin)),
+            amount - (amount * 6000) / 10000 - (amount * 4000) / 10000
+        );
+        assertEq(MockERC20(mock).balanceOf(alice), (amount * 6000) / 10000);
+        assertEq(MockERC20(mock).balanceOf(bob), (amount * 4000) / 10000);
+
+        uint256 usageId = bulletin.usageIds(resourceId);
+        assertEq(usageId, 1);
+        usageId = bulletin.usageIds(resourceId2);
+        assertEq(usageId, 1);
+
+        IBulletin.Usage memory u = bulletin.getUsage(resourceId, 1);
+        assertEq(u.ask, bulletin.encodeAsset(address(bulletin), uint96(askId)));
+        assertEq(u.timestamp, block.timestamp);
+        u = bulletin.getUsage(resourceId2, 1);
+        assertEq(u.ask, bulletin.encodeAsset(address(bulletin), uint96(askId)));
+        assertEq(u.timestamp, block.timestamp);
     }
 
-    /// -----------------------------------------------------------------------
-    /// Permissioned Functions.
-    /// ----------------------------------------------------------------------
+    // todo:
+    function test_incrementUsageByAnotherBulletin() public payable {}
 
-    function test_incrementUsage() public payable {}
-
+    // todo:
     function test_comment() public payable {}
 
-    /* -------------------------------------------------------------------------- */
-    /*                                  Helpers.                                  */
-    /* -------------------------------------------------------------------------- */
+    // todo:
+    function test_filterTrades() public payable {}
 }

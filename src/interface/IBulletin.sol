@@ -82,7 +82,6 @@ interface IBulletin {
     /*                     Public / External Write Functions.                     */
     /* -------------------------------------------------------------------------- */
 
-    // Assets.
     function ask(Ask calldata a) external payable;
     function resource(Resource calldata r) external;
     function trade(uint256 askId, Trade calldata t) external;
