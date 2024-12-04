@@ -1071,8 +1071,32 @@ contract BulletinTest is Test {
         assertEq(u.timestamp, block.timestamp);
     }
 
-    // todo:
-    function test_comment() public payable {}
+    function test_comment() public payable {
+        test_settleAsk_OneTrade(1 ether);
+
+        vm.prank(owner);
+        bulletin.comment(1, 1, TEST, BYTES);
+
+        IBulletin.Usage memory u = bulletin.getUsage(1, 1);
+        assertEq(u.feedback, TEST);
+        assertEq(u.data, BYTES);
+    }
+
+    function test_commentAnotherBulletin() public payable {
+        test_incrementUsageByAnotherBulletin(1 ether);
+
+        vm.prank(owner);
+        bulletin2.comment(1, 1, TEST, BYTES);
+        vm.prank(owner);
+        bulletin3.comment(1, 1, TEST, BYTES);
+
+        IBulletin.Usage memory u = bulletin2.getUsage(1, 1);
+        assertEq(u.feedback, TEST);
+        assertEq(u.data, BYTES);
+        u = bulletin3.getUsage(1, 1);
+        assertEq(u.feedback, TEST);
+        assertEq(u.data, BYTES);
+    }
 
     // todo:
     function test_filterTrades() public payable {}
